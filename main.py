@@ -1847,7 +1847,10 @@ class LiquidHandlerApp:
             return
 
         total_steps = sum(len(t["steps"]) for t in tasks)
-        self.log_command(f"[DILUTION] Starting sequence: {len(tasks)} rows, {total_steps} total dilution steps.")
+        tips_needed = len(tasks) + len(set(t["diluent"] for t in tasks))
+        self.log_command(
+            f"[DILUTION] Starting optimized sequence: {len(tasks)} rows, {total_steps} total dilution steps, "
+            f"~{tips_needed} tips needed.")
 
         def run_seq():
             current_simulated_module = self.last_known_module
@@ -1856,15 +1859,125 @@ class LiquidHandlerApp:
             self.update_last_module("EJECT")
             current_simulated_module = "EJECT"
 
+            # ============================================================
+            # PHASE 1: PRE-FILL ALL WELLS WITH DILUENT (one tip per unique diluent source)
+            # ============================================================
+            # Collect all (diluent_source, well, volume) tuples grouped by diluent
+            diluent_jobs = {}  # diluent_str -> list of (well_name, diluent_vol)
+            for task in tasks:
+                dil_src = task["diluent"]
+                if dil_src not in diluent_jobs:
+                    diluent_jobs[dil_src] = []
+                for step_idx, step in enumerate(task["steps"]):
+                    well = task["wells"][step_idx]
+                    diluent_jobs[dil_src].append((well, step["diluent_vol"]))
+
+            for dil_str, wells_and_vols in diluent_jobs.items():
+                self.log_line(f"[DILUTION] === PREFILL PHASE: {len(wells_and_vols)} wells with diluent from {dil_str} ===")
+                self.last_cmd_var.set(f"Prefill: {dil_str}")
+
+                # Pick one tip for this diluent source
+                tip_key = self._find_next_available_tip()
+                if not tip_key:
+                    messagebox.showerror("No Tips", "Ran out of tips during diluent prefill.")
+                    self.last_cmd_var.set("Idle")
+                    return
+
+                self.log_line(f"[DILUTION] Picking tip {tip_key} for diluent prefill...")
+                self._send_lines_with_ok(
+                    self._get_pick_tip_commands(tip_key, start_module=current_simulated_module))
+                self.tip_inventory[tip_key] = False
+                self.root.after(0, self.update_tip_grid_colors)
+                self.update_last_module("TIPS")
+                current_simulated_module = "TIPS"
+
+                # Get diluent source coordinates (constant for all wells in this group)
+                dil_mod, dil_x, dil_y, dil_safe_z, dil_asp_z, _ = self.get_coords_from_combo(dil_str)
+
+                for well_name, diluent_vol in wells_and_vols:
+                    dest_str = f"PLATE {well_name}"
+                    self.log_line(f"[DILUTION] Prefilling {well_name} with {diluent_vol}uL diluent...")
+                    self.last_cmd_var.set(f"Prefill: {diluent_vol}uL -> {well_name}")
+
+                    # --- Aspirate diluent ---
+                    use_opt_z_dil = (current_simulated_module in SMALL_VIAL_MODULES and dil_mod in SMALL_VIAL_MODULES)
+                    travel_z_dil = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
+                        2] if use_opt_z_dil else global_safe_z
+
+                    cmds_asp = []
+                    cmds_asp.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
+                    if current_simulated_module == dil_mod:
+                        cmds_asp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
+                        cmds_asp.append(f"G0 X{dil_x:.2f} Y{dil_y:.2f} F{JOG_SPEED_XY}")
+                    else:
+                        cmds_asp.append(f"G0 Z{travel_z_dil:.2f} F{JOG_SPEED_Z}")
+                        cmds_asp.append(f"G0 X{dil_x:.2f} Y{dil_y:.2f} F{JOG_SPEED_XY}")
+                        cmds_asp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
+
+                    e_dil_loaded = -1 * (air_gap_ul + diluent_vol) * STEPS_PER_UL
+                    cmds_asp.append(f"G0 Z{dil_asp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_asp.append(f"G1 E{e_dil_loaded:.3f} F{PIP_SPEED}")
+                    cmds_asp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
+                    self._send_lines_with_ok(cmds_asp)
+                    self.update_last_module(dil_mod)
+                    current_simulated_module = dil_mod
+
+                    # --- Dispense diluent into plate well ---
+                    dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
+
+                    use_opt_z_dest = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
+                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
+                        2] if use_opt_z_dest else global_safe_z
+
+                    cmds_disp = []
+                    cmds_disp.append(f"G0 Z{travel_z_dest:.2f} F{JOG_SPEED_Z}")
+                    cmds_disp.append(f"G0 X{dest_x:.2f} Y{dest_y:.2f} F{JOG_SPEED_XY}")
+                    cmds_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_disp.append(f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_disp.append(f"G1 E{e_blowout_pos:.3f} F{PIP_SPEED}")
+                    cmds_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
+                    self._send_lines_with_ok(cmds_disp)
+                    self.update_last_module(dest_mod)
+                    current_simulated_module = dest_mod
+
+                # Eject diluent tip after all wells for this diluent are filled
+                self.log_line(f"[DILUTION] Ejecting diluent prefill tip...")
+                self._send_lines_with_ok(self._get_eject_tip_commands())
+                self.update_last_module("EJECT")
+                current_simulated_module = "EJECT"
+
+            self.log_line("[DILUTION] === PREFILL COMPLETE. Starting compound transfer phase. ===")
+
+            # ============================================================
+            # PHASE 2: COMPOUND TRANSFER + MIXING (one tip per compound row)
+            # ============================================================
+            abs_plate_asp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_ASPIRATE"])[2]
+            abs_plate_disp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_DISPENSE"])[2]
+            abs_plate_safe_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_SAFE"])[2]
+
             for task in tasks:
                 line_num = task["line"]
                 steps = task["steps"]
                 wells = task["wells"]
                 source_str = task["source"]
-                diluent_str = task["diluent"]
 
                 self.log_line(
                     f"=== DILUTION Line {line_num}: {task['src_conc']} -> {task['final_conc']} ug/mL, {len(steps)} steps ===")
+
+                # Pick ONE fresh tip for this entire compound row
+                tip_key = self._find_next_available_tip()
+                if not tip_key:
+                    messagebox.showerror("No Tips", f"Ran out of tips at Line {line_num}.")
+                    self.last_cmd_var.set("Idle")
+                    return
+
+                self.log_line(f"[L{line_num}] Picking tip {tip_key} for compound transfer + mixing...")
+                self._send_lines_with_ok(
+                    self._get_pick_tip_commands(tip_key, start_module=current_simulated_module))
+                self.tip_inventory[tip_key] = False
+                self.root.after(0, self.update_tip_grid_colors)
+                self.update_last_module("TIPS")
+                current_simulated_module = "TIPS"
 
                 for step_idx, step in enumerate(steps):
                     transfer_vol = step["transfer_vol"]
@@ -1879,30 +1992,10 @@ class LiquidHandlerApp:
                         asp_source = f"PLATE {wells[step_idx - 1]}"
 
                     self.log_line(
-                        f"--- Step {step_idx + 1}/{len(steps)}: {transfer_vol}uL from {asp_source} + {diluent_vol}uL diluent -> {dest_well} ({result_conc} ug/mL) ---")
+                        f"--- Step {step_idx + 1}/{len(steps)}: {transfer_vol}uL from {asp_source} -> {dest_well} (diluent pre-filled, target {result_conc} ug/mL) ---")
                     self.last_cmd_var.set(f"L{line_num} Step {step_idx + 1}/{len(steps)}: {dest_well}")
 
-                    # === PHASE A: Transfer sample to well ===
-                    if step_idx == 0:
-                        # First step: pick a fresh tip for sample transfer
-                        tip_key = self._find_next_available_tip()
-                        if not tip_key:
-                            messagebox.showerror("No Tips", f"Ran out of tips at Line {line_num} step {step_idx + 1}.")
-                            self.last_cmd_var.set("Idle")
-                            return
-
-                        self.log_line(f"[L{line_num}] Picking tip {tip_key} for sample transfer...")
-                        self._send_lines_with_ok(
-                            self._get_pick_tip_commands(tip_key, start_module=current_simulated_module))
-                        self.tip_inventory[tip_key] = False
-                        self.root.after(0, self.update_tip_grid_colors)
-                        self.update_last_module("TIPS")
-                        current_simulated_module = "TIPS"
-                    else:
-                        # Reuse mixing tip from previous step (already loaded)
-                        self.log_line(f"[L{line_num}] Reusing mixing tip for transfer from {asp_source}...")
-
-                    # Aspirate from source
+                    # === Aspirate from source ===
                     src_mod, src_x, src_y, src_safe_z, src_asp_z, _ = self.get_coords_from_combo(asp_source)
 
                     use_opt_z_src = (current_simulated_module in SMALL_VIAL_MODULES and src_mod in SMALL_VIAL_MODULES)
@@ -1925,11 +2018,12 @@ class LiquidHandlerApp:
                     e_loaded_pos = -1 * (air_gap_ul + asp_vol) * STEPS_PER_UL
                     cmds.append(f"G0 Z{src_asp_z:.2f} F{JOG_SPEED_Z}")
                     cmds.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
+                    cmds.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
                     self._send_lines_with_ok(cmds)
                     self.update_last_module(src_mod)
                     current_simulated_module = src_mod
 
-                    # Dispense into dest well
+                    # === Dispense into dest well (diluent already there) ===
                     dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
 
                     use_opt_z_dest = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
@@ -1937,7 +2031,6 @@ class LiquidHandlerApp:
                         2] if use_opt_z_dest else global_safe_z
 
                     cmds_disp = []
-                    cmds_disp.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
                     cmds_disp.append(f"G0 Z{travel_z_dest:.2f} F{JOG_SPEED_Z}")
                     cmds_disp.append(f"G0 X{dest_x:.2f} Y{dest_y:.2f} F{JOG_SPEED_XY}")
                     cmds_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
@@ -1948,77 +2041,9 @@ class LiquidHandlerApp:
                     self.update_last_module(dest_mod)
                     current_simulated_module = dest_mod
 
-                    # Eject sample tip
-                    self.log_line(f"[L{line_num}] Ejecting sample tip...")
-                    self._send_lines_with_ok(self._get_eject_tip_commands())
-                    self.update_last_module("EJECT")
-                    current_simulated_module = "EJECT"
-
-                    # === PHASE B: Add diluent to well ===
-                    tip_key = self._find_next_available_tip()
-                    if not tip_key:
-                        messagebox.showerror("No Tips",
-                                             f"Ran out of tips at Line {line_num} step {step_idx + 1} (diluent).")
-                        self.last_cmd_var.set("Idle")
-                        return
-
-                    self.log_line(f"[L{line_num}] Picking tip {tip_key} for diluent...")
-                    self._send_lines_with_ok(
-                        self._get_pick_tip_commands(tip_key, start_module=current_simulated_module))
-                    self.tip_inventory[tip_key] = False
-                    self.root.after(0, self.update_tip_grid_colors)
-                    self.update_last_module("TIPS")
-                    current_simulated_module = "TIPS"
-
-                    # Aspirate diluent
-                    dil_mod, dil_x, dil_y, dil_safe_z, dil_asp_z, _ = self.get_coords_from_combo(diluent_str)
-
-                    use_opt_z_dil = (current_simulated_module in SMALL_VIAL_MODULES and dil_mod in SMALL_VIAL_MODULES)
-                    travel_z_dil = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
-                        2] if use_opt_z_dil else global_safe_z
-
-                    cmds_dil = []
-                    cmds_dil.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
-                    if current_simulated_module == dil_mod:
-                        cmds_dil.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
-                        cmds_dil.append(f"G0 X{dil_x:.2f} Y{dil_y:.2f} F{JOG_SPEED_XY}")
-                    else:
-                        cmds_dil.append(f"G0 Z{travel_z_dil:.2f} F{JOG_SPEED_Z}")
-                        cmds_dil.append(f"G0 X{dil_x:.2f} Y{dil_y:.2f} F{JOG_SPEED_XY}")
-                        cmds_dil.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
-
-                    e_dil_loaded = -1 * (air_gap_ul + diluent_vol) * STEPS_PER_UL
-                    cmds_dil.append(f"G0 Z{dil_asp_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_dil.append(f"G1 E{e_dil_loaded:.3f} F{PIP_SPEED}")
-                    self._send_lines_with_ok(cmds_dil)
-                    self.update_last_module(dil_mod)
-                    current_simulated_module = dil_mod
-
-                    # Dispense diluent into dest well
-                    cmds_dil_disp = []
-                    cmds_dil_disp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
-
-                    use_opt_z_dil2 = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
-                    travel_z_dil2 = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
-                        2] if use_opt_z_dil2 else global_safe_z
-
-                    cmds_dil_disp.append(f"G0 Z{travel_z_dil2:.2f} F{JOG_SPEED_Z}")
-                    cmds_dil_disp.append(f"G0 X{dest_x:.2f} Y{dest_y:.2f} F{JOG_SPEED_XY}")
-                    cmds_dil_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_dil_disp.append(f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_dil_disp.append(f"G1 E{e_blowout_pos:.3f} F{PIP_SPEED}")
-                    cmds_dil_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
-                    self._send_lines_with_ok(cmds_dil_disp)
-                    self.update_last_module(dest_mod)
-                    current_simulated_module = dest_mod
-
-                    # === PHASE C: Mix with same diluent tip ===
+                    # === Mix in well (same compound tip) ===
                     mix_times = 1 if step_idx == 0 and (transfer_vol / 800.0) >= 0.5 else 2
-                    self.log_line(f"[L{line_num}] Mixing {dest_well} {mix_times} time(s) with diluent tip...")
-
-                    abs_plate_asp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_ASPIRATE"])[2]
-                    abs_plate_disp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_DISPENSE"])[2]
-                    abs_plate_safe_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_SAFE"])[2]
+                    self.log_line(f"[L{line_num}] Mixing {dest_well} {mix_times} time(s)...")
 
                     e_mix_start = -1 * 200.0 * STEPS_PER_UL
                     e_mix_asp = -1 * 1000.0 * STEPS_PER_UL
@@ -2040,16 +2065,13 @@ class LiquidHandlerApp:
                     self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
                     self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
 
-                    # Keep mixing tip for next step's sample transfer, only eject on last step
-                    if step_idx < len(steps) - 1:
-                        self.log_line(f"[L{line_num}] Keeping mixing tip for next transfer step...")
-                        # Tip stays loaded; current_simulated_module remains dest_mod (PLATE)
-                    else:
-                        # Last step - eject tip
-                        self.log_line(f"[L{line_num}] Ejecting final tip...")
-                        self._send_lines_with_ok(self._get_eject_tip_commands())
-                        self.update_last_module("EJECT")
-                        current_simulated_module = "EJECT"
+                    # Tip stays loaded for next step (same compound row)
+
+                # Eject compound tip after all steps for this row are done
+                self.log_line(f"[L{line_num}] Ejecting compound tip...")
+                self._send_lines_with_ok(self._get_eject_tip_commands())
+                self.update_last_module("EJECT")
+                current_simulated_module = "EJECT"
 
                 self.log_line(f"=== DILUTION Line {line_num} COMPLETE ===")
 
