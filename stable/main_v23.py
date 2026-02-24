@@ -1303,7 +1303,7 @@ class LiquidHandlerApp:
         cols = [
             ("Execute", 8), ("Line", 6), ("Presat Tip", 10), ("Presat Src", 12),
             ("Source Start", 12), ("Source End", 12),
-            ("Dest Vial", 12), ("Vol (uL)", 10),
+            ("Dest Falcon", 12), ("Vol (uL)", 10),
             ("Wash Vol", 8), ("Wash Times", 8), ("Wash Source", 12)
         ]
 
@@ -1328,7 +1328,7 @@ class LiquidHandlerApp:
         source_options = self.wash_positions + [f"Falcon {p}" for p in self.falcon_positions]
         presat_options = ["Wash A", "Wash B", "Wash C"]
 
-        for i in range(12):
+        for i in range(6):
             row_vars = {
                 "execute": tk.BooleanVar(value=False),
                 "presat": tk.BooleanVar(value=True),
@@ -1336,7 +1336,7 @@ class LiquidHandlerApp:
                 "start": tk.StringVar(),
                 "end": tk.StringVar(),
                 "dest": tk.StringVar(),
-                "vol": tk.StringVar(value="800"),
+                "vol": tk.StringVar(value="600"),
                 "wash_vol": tk.StringVar(value="0"),
                 "wash_times": tk.StringVar(value="1"),
                 "wash_src": tk.StringVar(value="Wash A"),
@@ -1400,17 +1400,14 @@ class LiquidHandlerApp:
 
             row_vars["end"].trace_add("write", auto_capitalize_end)
 
-            # Destination - include both Falcon and 4mL vials
-            dest_options = [f"Falcon {p}" for p in self.falcon_positions] + [f"4mL {p}" for p in self._4ml_positions]
             cb_dest = ttk.Combobox(
                 table, textvariable=row_vars["dest"],
-                values=dest_options, width=10, state="readonly"
+                values=self.falcon_positions, width=10, state="readonly"
             )
             cb_dest.grid(row=r, column=6, padx=2, pady=2)
 
-            # Set default destination with Falcon prefix
             if i < len(default_falcons):
-                row_vars["dest"].set(f"Falcon {default_falcons[i]}")
+                row_vars["dest"].set(default_falcons[i])
 
             cb_dest.bind("<<ComboboxSelected>>", lambda e: self._update_falcon_exclusivity())
 
@@ -2062,17 +2059,15 @@ class LiquidHandlerApp:
         threading.Thread(target=run_seq, daemon=True).start()
 
     def _update_falcon_exclusivity(self):
-        # Include both Falcon and 4mL vials for destination exclusivity
-        # (Falcon A1 and 4mL A1 cannot be used simultaneously as they occupy same slot)
-        all_dests = set([f"Falcon {p}" for p in self.falcon_positions] + [f"4mL {p}" for p in self._4ml_positions])
-        selected_dests = set()
+        all_falcons = set(self.falcon_positions)
+        selected_falcons = set()
         for row in self.combine_rows:
             val = row["vars"]["dest"].get()
-            if val: selected_dests.add(val)
+            if val: selected_falcons.add(val)
         for row in self.combine_rows:
             current_val = row["vars"]["dest"].get()
             available = sorted(list(
-                (all_dests - selected_dests) | {current_val} if current_val else (all_dests - selected_dests)))
+                (all_falcons - selected_falcons) | {current_val} if current_val else (all_falcons - selected_falcons)))
             available = [x for x in available if x]
             row["widgets"]["dest"]["values"] = available
 
@@ -3924,8 +3919,6 @@ class LiquidHandlerApp:
         plate_disp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_DISPENSE"])[2]
         falcon_safe_z = self.resolve_coords(0, 0, FALCON_RACK_CONFIG["Z_SAFE"])[2]
         falcon_disp_z = self.resolve_coords(0, 0, FALCON_RACK_CONFIG["Z_DISPENSE"])[2]
-        _4ml_safe_z = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2]
-        _4ml_disp_z = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_DISPENSE"])[2]
         air_gap_vol = 200.0
         e_pos_air_gap = -1 * air_gap_vol * STEPS_PER_UL
         e_pos_blowout = -1 * 100.0 * STEPS_PER_UL
@@ -4008,32 +4001,18 @@ class LiquidHandlerApp:
                         self.update_last_module("PLATE")
                         current_sim_module = "PLATE"
 
-                        # Handle destination - either Falcon or 4mL vial
-                        if dest_falcon.startswith("4mL "):
-                            # 4mL vial destination
-                            vial_pos = dest_falcon.replace("4mL ", "")
-                            dx, dy = self.get_4ml_coordinates(vial_pos)
-                            dest_safe_z = _4ml_safe_z
-                            dest_disp_z = _4ml_disp_z
-                            dest_module = "4ML"
-                        else:
-                            # Falcon tube destination - strip "Falcon " prefix if present
-                            falcon_pos = dest_falcon.replace("Falcon ", "") if dest_falcon.startswith("Falcon ") else dest_falcon
-                            dx, dy = self.get_falcon_coordinates(falcon_pos)
-                            dest_safe_z = falcon_safe_z
-                            dest_disp_z = falcon_disp_z
-                            dest_module = "FALCON"
+                        dx, dy = self.get_falcon_coordinates(dest_falcon)
 
                         cmds.extend(
-                            self._get_smart_travel_gcode(dest_module, dx, dy, dest_safe_z,
+                            self._get_smart_travel_gcode("FALCON", dx, dy, falcon_safe_z,
                                                          start_module=current_sim_module))
 
-                        cmds.append(f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}")
+                        cmds.append(f"G0 Z{falcon_disp_z:.2f} F{JOG_SPEED_Z}")
                         cmds.append(f"G1 E{e_pos_blowout:.3f} F{PIP_SPEED}")
-                        cmds.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
+                        cmds.append(f"G0 Z{falcon_safe_z:.2f} F{JOG_SPEED_Z}")
                         self._send_lines_with_ok(cmds)
-                        self.update_last_module(dest_module)
-                        current_sim_module = dest_module
+                        self.update_last_module("FALCON")
+                        current_sim_module = "FALCON"
 
                         self.current_pipette_volume = 100.0
                         self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
