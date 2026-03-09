@@ -571,43 +571,43 @@ class LiquidHandlerApp:
         self.notebook.pack(side="top", fill="both", expand=True, padx=2, pady=2)
 
         self.tab_init = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_init, text=" Initialization ")
+        self.notebook.add(self.tab_init, text=" init. ")
         self._build_initialization_tab(self.tab_init)
 
         self.tab_transfer = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_transfer, text=" Transfer Liquid ")
+        self.notebook.add(self.tab_transfer, text=" liq. transfer ")
         self._build_transfer_liquid_tab(self.tab_transfer)
 
         self.tab_combine = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_combine, text=" Combine Fractions ")
+        self.notebook.add(self.tab_combine, text=" pooling ")
         self._build_combine_fractions_tab(self.tab_combine)
 
         self.tab_dilution = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_dilution, text=" Dilution ")
+        self.notebook.add(self.tab_dilution, text=" dilution ")
         self._build_dilution_tab(self.tab_dilution)
 
         self.tab_aliquots = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_aliquots, text=" Aliquots ")
+        self.notebook.add(self.tab_aliquots, text=" aliquots ")
         self._build_aliquots_tab(self.tab_aliquots)
 
         self.tab_movement = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_movement, text=" Movement / XYZ ")
+        self.notebook.add(self.tab_movement, text=" movement ")
         self._build_movement_tab(self.tab_movement)
 
         self.tab_pipette = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_pipette, text=" Pipette Control ")
+        self.notebook.add(self.tab_pipette, text=" pipette ")
         self._build_pipette_tab(self.tab_pipette)
 
         self.tab_tips = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_tips, text=" Log ")
+        self.notebook.add(self.tab_tips, text=" log ")
         self._build_maintenance_tab(self.tab_tips)
 
         self.tab_testing = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_testing, text=" Testing ")
+        self.notebook.add(self.tab_testing, text=" testing ")
         self._build_testing_tab(self.tab_testing)
 
         self.tab_calibration = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_calibration, text=" Calibration ")
+        self.notebook.add(self.tab_calibration, text=" calib. ")
         self._build_calibration_tab(self.tab_calibration)
 
         # Bottom Bar
