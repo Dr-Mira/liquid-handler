@@ -590,6 +590,10 @@ class LiquidHandlerApp:
         self.notebook.add(self.tab_aliquots, text=" aliquots ")
         self._build_aliquots_tab(self.tab_aliquots)
 
+        self.tab_dilution_aliquots = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_dilution_aliquots, text=" dil./aliquots ")
+        self._build_dilution_aliquots_tab(self.tab_dilution_aliquots)
+
         self.tab_movement = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_movement, text=" movement ")
         self._build_movement_tab(self.tab_movement)
@@ -1619,6 +1623,98 @@ class LiquidHandlerApp:
             font=("Arial", 8, "italic")
         ).pack(pady=5)
 
+    def _build_dilution_aliquots_tab(self, parent):
+        frame = ttk.Frame(parent, padding=5)
+        frame.pack(fill="both", expand=True)
+
+        table = ttk.Frame(frame)
+        table.pack(fill="x", pady=(0, 5))
+        table.grid_anchor("w")
+
+        cols = [
+            ("Exec", 4), ("Line", 3), ("Fixed Source", 12),
+            ("Source Conc", 10), ("Diluent", 14),
+            ("Aliquot Conc", 10), ("Aliquot Vol", 10)
+        ]
+
+        for c, (text, w) in enumerate(cols):
+            ttk.Label(
+                table, text=text, width=w,
+                font=("Arial", 9, "bold"),
+                anchor="center"
+            ).grid(row=0, column=c, padx=2, pady=(0, 4), sticky="ew")
+
+        diluent_options = ["Wash A", "Wash B", "Wash C"]
+        diluent_options.extend([f"Falcon {p}" for p in self.falcon_positions])
+
+        self.dilution_aliquots_rows = []
+
+        for i in range(8):
+            plate_row = chr(ord("A") + i)
+            row_vars = {
+                "execute": tk.BooleanVar(value=False),
+                "src_pos": tk.StringVar(value=f"{plate_row}1"),
+                "src_conc": tk.StringVar(value=""),
+                "diluent": tk.StringVar(value="Wash A"),
+                "aliquot_conc": tk.StringVar(value=""),
+                "aliquot_vol": tk.StringVar(value="160"),
+            }
+
+            r = i + 1
+
+            ttk.Checkbutton(table, variable=row_vars["execute"]).grid(row=r, column=0, padx=2, pady=2)
+            ttk.Label(table, text=f"{i + 1}", width=3, anchor="center").grid(row=r, column=1, padx=2, pady=2)
+            ttk.Label(table, textvariable=row_vars["src_pos"], width=12, anchor="center").grid(row=r, column=2, padx=2, pady=2)
+
+            ttk.Entry(
+                table, textvariable=row_vars["src_conc"],
+                width=10, justify="center"
+            ).grid(row=r, column=3, padx=2, pady=2)
+
+            ttk.Combobox(
+                table, textvariable=row_vars["diluent"],
+                values=diluent_options, width=14, state="readonly"
+            ).grid(row=r, column=4, padx=2, pady=2)
+
+            ttk.Entry(
+                table, textvariable=row_vars["aliquot_conc"],
+                width=10, justify="center"
+            ).grid(row=r, column=5, padx=2, pady=2)
+
+            ttk.Entry(
+                table, textvariable=row_vars["aliquot_vol"],
+                width=10, justify="center"
+            ).grid(row=r, column=6, padx=2, pady=2)
+
+            self.dilution_aliquots_rows.append(row_vars)
+
+        btn_frame = ttk.Frame(frame, padding=5)
+        btn_frame.pack(fill="x", pady=5)
+
+        exec_row = ttk.Frame(btn_frame)
+        exec_row.pack(fill="x", pady=5)
+
+        self.dilution_aliquots_exec_btn = ttk.Button(
+            exec_row,
+            text="EXECUTE DILUTION + ALIQUOT SEQUENCE",
+            command=lambda: threading.Thread(target=self.dilution_aliquots_sequence, daemon=True).start()
+        )
+        self.dilution_aliquots_exec_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
+
+        self.dilution_aliquots_pause_btn = ttk.Button(
+            exec_row,
+            text="PAUSE",
+            command=self.toggle_pause
+        )
+        self.dilution_aliquots_pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
+
+        ttk.Label(
+            btn_frame,
+            text="Rows map to plate A-H. Source is fixed to column 1 (A1-H1), dilution wells use columns 2-8, "
+                 "and aliquots are dispensed to columns 9-12 at the target concentration/volume.",
+            font=("Arial", 8, "italic"), wraplength=900, justify="left"
+        ).pack(pady=5)
+
     def _build_dilution_tab(self, parent):
         frame = ttk.Frame(parent, padding=5)
         frame.pack(fill="both", expand=True)
@@ -1746,6 +1842,7 @@ class LiquidHandlerApp:
             font=("Arial", 8, "italic"), wraplength=900, justify="left"
         ).pack(pady=5)
 
+        
     def _compute_dilution_steps(self, src_conc, final_conc, max_vol=800.0, min_transfer=80.0, max_transfer=800.0):
         """Compute serial dilution steps needed to go from src_conc to final_conc.
         Each step produces a well with total volume = max_vol (800 uL).
@@ -2083,6 +2180,332 @@ class LiquidHandlerApp:
 
         threading.Thread(target=run_seq, daemon=True).start()
 
+    def dilution_aliquots_sequence(self):
+        if not self.ser or not self.ser.is_open:
+            messagebox.showwarning("Not Connected", "Please connect to the printer first.")
+            return
+
+        plate_rows = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        aliquot_cols = [9, 10, 11, 12]
+
+        air_gap_ul = float(AIR_GAP_UL)
+        e_gap_pos = -1 * air_gap_ul * STEPS_PER_UL
+        e_blowout_pos = -1 * 100.0 * STEPS_PER_UL
+        global_safe_z = self.resolve_coords(0, 0, GLOBAL_SAFE_Z_OFFSET)[2]
+
+        tasks = []
+        for idx, row in enumerate(self.dilution_aliquots_rows):
+            if not row["execute"].get():
+                continue
+
+            plate_row_char = plate_rows[idx]
+            source_str = f"PLATE {plate_row_char}1"
+            diluent_str = row["diluent"].get().strip()
+
+            try:
+                src_conc = float(row["src_conc"].get())
+                aliquot_conc = float(row["aliquot_conc"].get())
+                aliquot_vol = float(row["aliquot_vol"].get())
+            except (TypeError, ValueError):
+                self.log_line(f"[DIL+ALIQ] Skipping line {idx + 1}: invalid numeric input.")
+                continue
+
+            if not diluent_str:
+                self.log_line(f"[DIL+ALIQ] Skipping line {idx + 1}: missing diluent.")
+                continue
+            if src_conc <= 0 or aliquot_conc <= 0 or aliquot_conc >= src_conc:
+                self.log_line(f"[DIL+ALIQ] Skipping line {idx + 1}: conc must be positive and aliquot conc < source conc.")
+                continue
+            if aliquot_vol <= 0:
+                self.log_line(f"[DIL+ALIQ] Skipping line {idx + 1}: aliquot volume must be positive.")
+                continue
+
+            total_aliquot = aliquot_vol * len(aliquot_cols)
+            trash_vol_ul = 100.0
+            aspirate_for_aliquots = total_aliquot + trash_vol_ul
+            if aspirate_for_aliquots > 800.0:
+                self.log_line(
+                    f"[DIL+ALIQ] Skipping line {idx + 1}: aliquot package needs {aspirate_for_aliquots:.1f}uL (>800uL).")
+                continue
+
+            steps = self._compute_dilution_steps(src_conc, aliquot_conc)
+            if not steps:
+                self.log_line(f"[DIL+ALIQ] Skipping line {idx + 1}: could not compute dilution steps.")
+                continue
+
+            start_col = 2
+            cols_needed = len(steps)
+            if start_col + cols_needed - 1 > 8:
+                self.log_line(
+                    f"[DIL+ALIQ] Skipping line {idx + 1}: needs {cols_needed} dilution wells in cols 2-8.")
+                continue
+
+            wells = [f"{plate_row_char}{start_col + s}" for s in range(cols_needed)]
+            aliquot_destinations = [f"PLATE {plate_row_char}{c}" for c in aliquot_cols]
+
+            tasks.append({
+                "line": idx + 1,
+                "source": source_str,
+                "diluent": diluent_str,
+                "src_conc": src_conc,
+                "aliquot_conc": aliquot_conc,
+                "steps": steps,
+                "wells": wells,
+                "aliquot_destinations": aliquot_destinations,
+                "aliquot_vol": aliquot_vol,
+                "aliquot_total": total_aliquot,
+                "aliquot_aspirate": aspirate_for_aliquots,
+            })
+
+        if not tasks:
+            messagebox.showinfo("No Tasks", "No valid Dilution+Aliquot lines selected for execution.")
+            return
+
+        total_steps = sum(len(t["steps"]) for t in tasks)
+        tips_needed = len(tasks) + len(set(t["diluent"] for t in tasks))
+        self.log_command(
+            f"[DIL+ALIQ] Starting optimized sequence: {len(tasks)} rows, {total_steps} dilution steps, "
+            f"~{tips_needed} tips needed.")
+
+        def run_seq():
+            current_simulated_module = self.last_known_module
+            self.log_line("[DIL+ALIQ] Ensuring no tip is loaded at start...")
+            self._send_lines_with_ok(self._get_eject_tip_commands())
+            self.update_last_module("EJECT")
+            current_simulated_module = "EJECT"
+
+            # Phase 1: Prefill dilution wells grouped by diluent source
+            diluent_jobs = {}
+            for task in tasks:
+                dil_src = task["diluent"]
+                if dil_src not in diluent_jobs:
+                    diluent_jobs[dil_src] = []
+                for step_idx, step in enumerate(task["steps"]):
+                    diluent_jobs[dil_src].append((task["wells"][step_idx], step["diluent_vol"]))
+
+            for dil_str, wells_and_vols in diluent_jobs.items():
+                self.log_line(f"[DIL+ALIQ] === PREFILL: {len(wells_and_vols)} wells with {dil_str} ===")
+                self.last_cmd_var.set(f"Prefill: {dil_str}")
+
+                tip_key = self._find_next_available_tip()
+                if not tip_key:
+                    messagebox.showerror("No Tips", "Ran out of tips during diluent prefill.")
+                    self.last_cmd_var.set("Idle")
+                    return
+
+                self.log_line(f"[DIL+ALIQ] Picking tip {tip_key} for prefill...")
+                self._send_lines_with_ok(self._get_pick_tip_commands(tip_key, start_module=current_simulated_module))
+                self.tip_inventory[tip_key] = False
+                self.root.after(0, self.update_tip_grid_colors)
+                self.update_last_module("TIPS")
+                current_simulated_module = "TIPS"
+
+                dil_mod, dil_x, dil_y, dil_safe_z, dil_asp_z, _ = self.get_coords_from_combo(dil_str)
+
+                for well_name, diluent_vol in wells_and_vols:
+                    dest_str = f"PLATE {well_name}"
+                    self.log_line(f"[DIL+ALIQ] Prefilling {well_name} with {diluent_vol}uL diluent...")
+                    self.last_cmd_var.set(f"Prefill: {diluent_vol}uL -> {well_name}")
+
+                    use_opt_z_dil = (current_simulated_module in SMALL_VIAL_MODULES and dil_mod in SMALL_VIAL_MODULES)
+                    travel_z_dil = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_dil else global_safe_z
+
+                    cmds_asp = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
+                    if current_simulated_module == dil_mod:
+                        cmds_asp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
+                        cmds_asp.append(f"G0 X{dil_x:.2f} Y{dil_y:.2f} F{JOG_SPEED_XY}")
+                    else:
+                        cmds_asp.append(f"G0 Z{travel_z_dil:.2f} F{JOG_SPEED_Z}")
+                        cmds_asp.append(f"G0 X{dil_x:.2f} Y{dil_y:.2f} F{JOG_SPEED_XY}")
+                        cmds_asp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
+
+                    e_dil_loaded = -1 * (air_gap_ul + diluent_vol) * STEPS_PER_UL
+                    cmds_asp.append(f"G0 Z{dil_asp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_asp.append(f"G1 E{e_dil_loaded:.3f} F{PIP_SPEED}")
+                    cmds_asp.append(f"G0 Z{dil_safe_z:.2f} F{JOG_SPEED_Z}")
+                    self._send_lines_with_ok(cmds_asp)
+                    self.update_last_module(dil_mod)
+                    current_simulated_module = dil_mod
+
+                    dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
+                    use_opt_z_dest = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
+                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_dest else global_safe_z
+
+                    cmds_disp = [
+                        f"G0 Z{travel_z_dest:.2f} F{JOG_SPEED_Z}",
+                        f"G0 X{dest_x:.2f} Y{dest_y:.2f} F{JOG_SPEED_XY}",
+                        f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}",
+                        f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}",
+                        f"G1 E{e_blowout_pos:.3f} F{PIP_SPEED}",
+                        f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}",
+                    ]
+                    self._send_lines_with_ok(cmds_disp)
+                    self.update_last_module(dest_mod)
+                    current_simulated_module = dest_mod
+
+                self.log_line("[DIL+ALIQ] Ejecting prefill tip...")
+                self._send_lines_with_ok(self._get_eject_tip_commands())
+                self.update_last_module("EJECT")
+                current_simulated_module = "EJECT"
+
+            self.log_line("[DIL+ALIQ] === PREFILL COMPLETE. Starting transfer+mix+aliquot phase. ===")
+
+            abs_plate_asp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_ASPIRATE"])[2]
+            abs_plate_disp_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_DISPENSE"])[2]
+            abs_plate_safe_z = self.resolve_coords(0, 0, PLATE_CONFIG["Z_SAFE"])[2]
+
+            for task in tasks:
+                line_num = task["line"]
+                steps = task["steps"]
+                wells = task["wells"]
+                source_str = task["source"]
+
+                self.log_line(
+                    f"=== DIL+ALIQ Line {line_num}: {task['src_conc']} -> {task['aliquot_conc']} ug/mL, {len(steps)} dilution step(s) ===")
+
+                tip_key = self._find_next_available_tip()
+                if not tip_key:
+                    messagebox.showerror("No Tips", f"Ran out of tips at Line {line_num}.")
+                    self.last_cmd_var.set("Idle")
+                    return
+
+                self.log_line(f"[L{line_num}] Picking tip {tip_key} for dilution + mixing + aliquot...")
+                self._send_lines_with_ok(self._get_pick_tip_commands(tip_key, start_module=current_simulated_module))
+                self.tip_inventory[tip_key] = False
+                self.root.after(0, self.update_tip_grid_colors)
+                self.update_last_module("TIPS")
+                current_simulated_module = "TIPS"
+
+                for step_idx, step in enumerate(steps):
+                    transfer_vol = step["transfer_vol"]
+                    result_conc = step["result_conc"]
+                    dest_well = wells[step_idx]
+                    dest_str = f"PLATE {dest_well}"
+                    asp_source = source_str if step_idx == 0 else f"PLATE {wells[step_idx - 1]}"
+
+                    self.log_line(
+                        f"--- Step {step_idx + 1}/{len(steps)}: {transfer_vol}uL from {asp_source} -> {dest_well} (target {result_conc} ug/mL) ---")
+                    self.last_cmd_var.set(f"L{line_num} Step {step_idx + 1}/{len(steps)}: {dest_well}")
+
+                    src_mod, src_x, src_y, src_safe_z, src_asp_z, _ = self.get_coords_from_combo(asp_source)
+                    use_opt_z_src = (current_simulated_module in SMALL_VIAL_MODULES and src_mod in SMALL_VIAL_MODULES)
+                    travel_z_src = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_src else global_safe_z
+
+                    cmds = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
+                    if current_simulated_module == src_mod:
+                        cmds.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
+                        cmds.append(f"G0 X{src_x:.2f} Y{src_y:.2f} F{JOG_SPEED_XY}")
+                    else:
+                        cmds.append(f"G0 Z{travel_z_src:.2f} F{JOG_SPEED_Z}")
+                        cmds.append(f"G0 X{src_x:.2f} Y{src_y:.2f} F{JOG_SPEED_XY}")
+                        cmds.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
+
+                    asp_vol = transfer_vol * 1.10 if transfer_vol < 100 else transfer_vol
+                    e_loaded_pos = -1 * (air_gap_ul + asp_vol) * STEPS_PER_UL
+                    cmds.append(f"G0 Z{src_asp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
+                    cmds.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
+                    self._send_lines_with_ok(cmds)
+                    self.update_last_module(src_mod)
+                    current_simulated_module = src_mod
+
+                    dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
+                    use_opt_z_dest = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
+                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_dest else global_safe_z
+
+                    cmds_disp = [
+                        f"G0 Z{travel_z_dest:.2f} F{JOG_SPEED_Z}",
+                        f"G0 X{dest_x:.2f} Y{dest_y:.2f} F{JOG_SPEED_XY}",
+                        f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}",
+                        f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}",
+                        f"G1 E{e_blowout_pos:.3f} F{PIP_SPEED}",
+                        f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}",
+                    ]
+                    self._send_lines_with_ok(cmds_disp)
+                    self.update_last_module(dest_mod)
+                    current_simulated_module = dest_mod
+
+                    mix_times = 1 if step_idx == 0 and (transfer_vol / 800.0) >= 0.5 else 2
+                    self.log_line(f"[L{line_num}] Mixing {dest_well} {mix_times} time(s)...")
+
+                    e_mix_start = -1 * 200.0 * STEPS_PER_UL
+                    e_mix_asp = -1 * 1000.0 * STEPS_PER_UL
+                    e_mix_disp = -1 * 100.0 * STEPS_PER_UL
+
+                    cmds_mix = [f"G1 E{e_mix_start:.3f} F{PIP_SPEED}", f"G0 Z{abs_plate_asp_z:.2f} F{JOG_SPEED_Z}"]
+                    for _ in range(mix_times):
+                        cmds_mix.append(f"G1 E{e_mix_asp:.3f} F{PIP_SPEED}")
+                        cmds_mix.append(f"G0 Z{abs_plate_disp_z:.2f} F{JOG_SPEED_Z}")
+                        cmds_mix.append(f"G1 E{e_mix_disp:.3f} F{PIP_SPEED}")
+                        cmds_mix.append(f"G0 Z{abs_plate_asp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_mix.append(f"G0 Z{abs_plate_safe_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_mix.append("M18 E")
+                    self._send_lines_with_ok(cmds_mix)
+
+                    self.current_pipette_volume = 100.0
+                    self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
+                    self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
+
+                final_well = wells[-1]
+                final_source = f"PLATE {final_well}"
+                self.log_line(
+                    f"[L{line_num}] Aliquoting from {final_well}: {task['aliquot_vol']:.2f}uL into {len(task['aliquot_destinations'])} wells...")
+
+                src_mod, src_x, src_y, src_safe_z, src_asp_z, _ = self.get_coords_from_combo(final_source)
+                cmds_asp_aliq = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
+                cmds_asp_aliq.extend(self._get_smart_travel_gcode(src_mod, src_x, src_y, src_safe_z,
+                                                                  start_module=current_simulated_module))
+                e_loaded = -1 * (air_gap_ul + task["aliquot_aspirate"]) * STEPS_PER_UL
+                cmds_asp_aliq.append(f"G0 Z{src_asp_z:.2f} F{JOG_SPEED_Z}")
+                cmds_asp_aliq.append(f"G1 E{e_loaded:.3f} F{PIP_SPEED}")
+                cmds_asp_aliq.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
+                self._send_lines_with_ok(cmds_asp_aliq)
+                self.update_last_module(src_mod)
+                current_simulated_module = src_mod
+
+                remaining_volume = task["aliquot_total"]
+                for dest_str in task["aliquot_destinations"]:
+                    self.log_line(f"[L{line_num}] Aliquot dispense {task['aliquot_vol']:.2f}uL -> {dest_str}")
+                    self.last_cmd_var.set(f"L{line_num}: {task['aliquot_vol']:.2f}uL -> {dest_str}")
+
+                    dest_mod, dest_x, dest_y, dest_safe_z, dest_asp_z, _ = self.get_coords_from_combo(dest_str)
+                    cmds_disp = []
+                    cmds_disp.extend(self._get_smart_travel_gcode(
+                        dest_mod, dest_x, dest_y, dest_safe_z,
+                        start_module=current_simulated_module
+                    ))
+
+                    remaining_volume -= task["aliquot_vol"]
+                    e_after_disp = -1 * (air_gap_ul + remaining_volume + 100.0) * STEPS_PER_UL
+
+                    dispense_z = dest_asp_z
+                    cmds_disp.append(f"G0 Z{dispense_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_disp.append(f"G1 E{e_after_disp:.3f} F{PIP_SPEED}")
+                    cmds_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
+
+                    self._send_lines_with_ok(cmds_disp)
+                    self.update_last_module(dest_mod)
+                    current_simulated_module = dest_mod
+
+                self.current_pipette_volume = air_gap_ul
+                self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
+                self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
+
+                self.log_line(f"[L{line_num}] Ejecting compound/aliquot tip...")
+                self._send_lines_with_ok(self._get_eject_tip_commands())
+                self.update_last_module("EJECT")
+                current_simulated_module = "EJECT"
+
+                self.log_line(f"=== DIL+ALIQ Line {line_num} COMPLETE ===")
+
+            self.log_command("[DIL+ALIQ] All lines complete. Parking.")
+            self.last_cmd_var.set("Parking...")
+            self._send_lines_with_ok(self._get_park_head_commands())
+            self.update_last_module("PARK")
+            self.last_cmd_var.set("Idle")
+
+        threading.Thread(target=run_seq, daemon=True).start()
+
     def _update_falcon_exclusivity(self):
         # Include both Falcon and 4mL vials for destination exclusivity
         # (Falcon A1 and 4mL A1 cannot be used simultaneously as they occupy same slot)
@@ -2107,9 +2530,11 @@ class LiquidHandlerApp:
             ttk.Radiobutton(step_frame, text=f"{float(val)}", variable=self.step_size_var, value=val).pack(side="left",
                                                                                                            expand=True)
         controls_frame = ttk.Frame(main_layout)
-        controls_frame.pack(expand=True, fill="both")
-        xy_frame = ttk.LabelFrame(controls_frame, text="XY Axis", padding=10)
+        controls_frame.pack(fill="x")
+
+        xy_frame = ttk.LabelFrame(controls_frame, text="XY Axis", padding=8)
         xy_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
         xy_grid = ttk.Frame(xy_frame)
         xy_grid.pack(expand=True)
         ttk.Button(xy_grid, text="Y+", width=8, command=lambda: self.send_jog("Y", 1)).grid(row=0, column=1, pady=5)
@@ -2117,8 +2542,10 @@ class LiquidHandlerApp:
         ttk.Button(xy_grid, text="Home XY", width=8, command=lambda: self.send_home("XY")).grid(row=1, column=1, padx=5)
         ttk.Button(xy_grid, text="X+", width=8, command=lambda: self.send_jog("X", 1)).grid(row=1, column=2, padx=5)
         ttk.Button(xy_grid, text="Y-", width=8, command=lambda: self.send_jog("Y", -1)).grid(row=2, column=1, pady=5)
-        z_frame = ttk.LabelFrame(controls_frame, text="Z Axis", padding=10)
+
+        z_frame = ttk.LabelFrame(controls_frame, text="Z Axis", padding=8)
         z_frame.pack(side="right", fill="both", expand=True, padx=(5, 0))
+
         ttk.Button(z_frame, text="Z+ (Up)", command=lambda: self.send_jog("Z", 1)).pack(pady=5, fill='x')
         ttk.Button(z_frame, text="Home Z", command=lambda: self.send_home("Z")).pack(pady=5, fill='x')
         ttk.Button(z_frame, text="Z- (Down)", command=lambda: self.send_jog("Z", -1)).pack(pady=5, fill='x')
@@ -2671,7 +3098,9 @@ class LiquidHandlerApp:
         self.transfer_pause_btn.config(text=status)
         self.combine_pause_btn.config(text=status)
         self.aliquot_pause_btn.config(text=status)
-        self.dilution_pause_btn.config(text=status)  # <-- ADD THIS LINE
+        self.dilution_pause_btn.config(text=status)
+        if hasattr(self, "dilution_aliquots_pause_btn"):
+            self.dilution_aliquots_pause_btn.config(text=status)
 
         if self.is_paused:
             self.log_line("[USER] Paused sequence.")
@@ -2706,6 +3135,12 @@ class LiquidHandlerApp:
         self.abort_btn.config(state="disabled")
         self.transfer_pause_btn.config(text="PAUSE")
         self.combine_pause_btn.config(text="PAUSE")
+        if hasattr(self, "aliquot_pause_btn"):
+            self.aliquot_pause_btn.config(text="PAUSE")
+        if hasattr(self, "dilution_pause_btn"):
+            self.dilution_pause_btn.config(text="PAUSE")
+        if hasattr(self, "dilution_aliquots_pause_btn"):
+            self.dilution_aliquots_pause_btn.config(text="PAUSE")
 
         # The running thread will catch SequenceAbortedError and exit.
         # We start a separate thread to handle the cleanup (Eject + Park)
