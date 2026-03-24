@@ -1689,7 +1689,8 @@ class LiquidHandlerApp:
             font=("Arial", 8, "italic")
         ).pack(pady=5)
 
-    def _build_dilution_aliquots_tab(self, parent):
+    def _build_dilution_aliquots_plate_subtab(self, parent, plate_name):
+        """Build a single plate subtab for dilution/aliquots."""
         frame = ttk.Frame(parent, padding=5)
         frame.pack(fill="both", expand=True)
 
@@ -1714,7 +1715,7 @@ class LiquidHandlerApp:
         diluent_options = ["Wash A", "Wash B", "Wash C"]
         diluent_options.extend([f"Falcon {p}" for p in self.falcon_positions])
 
-        self.dilution_aliquots_rows = []
+        rows = []
 
         for i in range(8):
             plate_row = chr(ord("A") + i)
@@ -1759,7 +1760,7 @@ class LiquidHandlerApp:
                 width=16, justify="center"
             ).grid(row=r, column=7, padx=2, pady=2)
 
-            self.dilution_aliquots_rows.append(row_vars)
+            rows.append(row_vars)
 
         btn_frame = ttk.Frame(frame, padding=5)
         btn_frame.pack(fill="x", pady=5)
@@ -1767,19 +1768,19 @@ class LiquidHandlerApp:
         exec_row = ttk.Frame(btn_frame)
         exec_row.pack(fill="x", pady=5)
 
-        self.dilution_aliquots_exec_btn = ttk.Button(
+        exec_btn = ttk.Button(
             exec_row,
-            text="EXECUTE DILUTION + ALIQUOT SEQUENCE",
-            command=lambda: threading.Thread(target=self.dilution_aliquots_sequence, daemon=True).start()
+            text=f"EXECUTE {plate_name.upper()} SEQUENCE",
+            command=lambda r=rows, p=plate_name: threading.Thread(target=self.dilution_aliquots_sequence, args=(r, p), daemon=True).start()
         )
-        self.dilution_aliquots_exec_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
+        exec_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
 
-        self.dilution_aliquots_pause_btn = ttk.Button(
+        pause_btn = ttk.Button(
             exec_row,
             text="PAUSE",
             command=self.toggle_pause
         )
-        self.dilution_aliquots_pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
+        pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
 
         ttk.Label(
             btn_frame,
@@ -1787,6 +1788,41 @@ class LiquidHandlerApp:
                  "and aliquots are dispensed to columns 9-12 at the target concentration/volume.",
             font=("Arial", 8, "italic"), wraplength=900, justify="left"
         ).pack(pady=5)
+
+        return rows
+
+    def _build_dilution_aliquots_tab(self, parent):
+        frame = ttk.Frame(parent, padding=5)
+        frame.pack(fill="both", expand=True)
+
+        # Create notebook for subtabs
+        self.dilution_aliquots_notebook = ttk.Notebook(frame)
+        self.dilution_aliquots_notebook.pack(fill="both", expand=True, pady=(0, 5))
+
+        # Create 3 subtabs: plate, plate left, plate right
+        tab_plate = ttk.Frame(self.dilution_aliquots_notebook)
+        tab_plate_left = ttk.Frame(self.dilution_aliquots_notebook)
+        tab_plate_right = ttk.Frame(self.dilution_aliquots_notebook)
+
+        self.dilution_aliquots_notebook.add(tab_plate, text=" plate ")
+        self.dilution_aliquots_notebook.add(tab_plate_left, text=" plate left ")
+        self.dilution_aliquots_notebook.add(tab_plate_right, text=" plate right ")
+
+        # Build each subtab and store rows
+        self.dilution_aliquots_plate_rows = self._build_dilution_aliquots_plate_subtab(tab_plate, "plate")
+        self.dilution_aliquots_plate_left_rows = self._build_dilution_aliquots_plate_subtab(tab_plate_left, "plate left")
+        self.dilution_aliquots_plate_right_rows = self._build_dilution_aliquots_plate_subtab(tab_plate_right, "plate right")
+
+        # Execute All Plates button
+        btn_frame = ttk.Frame(frame, padding=5)
+        btn_frame.pack(fill="x", pady=5)
+
+        exec_all_btn = ttk.Button(
+            btn_frame,
+            text="EXECUTE ALL PLATES",
+            command=lambda: threading.Thread(target=self.execute_all_plates, daemon=True).start()
+        )
+        exec_all_btn.pack(fill="x", ipady=5)
 
     def _build_dilution_tab(self, parent):
         frame = ttk.Frame(parent, padding=5)
@@ -2253,10 +2289,17 @@ class LiquidHandlerApp:
 
         threading.Thread(target=run_seq, daemon=True).start()
 
-    def dilution_aliquots_sequence(self):
+    def dilution_aliquots_sequence(self, rows=None, plate_name="plate"):
         if not self.ser or not self.ser.is_open:
             messagebox.showwarning("Not Connected", "Please connect to the printer first.")
             return
+
+        # Use provided rows or default to legacy single-plate rows
+        if rows is None:
+            rows = getattr(self, 'dilution_aliquots_rows', [])
+
+        # Set running flag for execute_all_plates to wait
+        self._dilution_aliquots_running = True
 
         plate_rows = ["A", "B", "C", "D", "E", "F", "G", "H"]
         aliquot_cols = [9, 10, 11, 12]
@@ -2267,7 +2310,7 @@ class LiquidHandlerApp:
         global_safe_z = self.resolve_coords(0, 0, GLOBAL_SAFE_Z_OFFSET)[2]
 
         tasks = []
-        for idx, row in enumerate(self.dilution_aliquots_rows):
+        for idx, row in enumerate(rows):
             if not row["execute"].get():
                 continue
 
@@ -2579,8 +2622,60 @@ class LiquidHandlerApp:
             self._send_lines_with_ok(self._get_park_head_commands())
             self.update_last_module("PARK")
             self.last_cmd_var.set("Idle")
+            # Clear running flag
+            self._dilution_aliquots_running = False
 
         threading.Thread(target=run_seq, daemon=True).start()
+
+    def execute_all_plates(self):
+        """Execute dilution+aliquot sequence for all plates with selected exec checkboxes."""
+        if not self.ser or not self.ser.is_open:
+            messagebox.showwarning("Not Connected", "Please connect to the printer first.")
+            return
+
+        # Collect all plates with their rows
+        plates = [
+            ("plate", self.dilution_aliquots_plate_rows),
+            ("plate left", self.dilution_aliquots_plate_left_rows),
+            ("plate right", self.dilution_aliquots_plate_right_rows),
+        ]
+
+        # Check if any plate has at least one row selected
+        has_any_selection = False
+        for plate_name, rows in plates:
+            for row in rows:
+                if row["execute"].get():
+                    has_any_selection = True
+                    break
+            if has_any_selection:
+                break
+
+        if not has_any_selection:
+            messagebox.showinfo("No Tasks", "No valid Dilution+Aliquot lines selected for execution across all plates.")
+            return
+
+        self.log_command("[DIL+ALIQ ALL] Starting execution of all plates...")
+
+        # Execute each plate sequentially
+        for plate_name, rows in plates:
+            # Check if this plate has any rows selected
+            has_selection = False
+            for row in rows:
+                if row["execute"].get():
+                    has_selection = True
+                    break
+
+            if has_selection:
+                self.log_line(f"[DIL+ALIQ ALL] Executing {plate_name}...")
+                # Run the sequence for this plate
+                self.dilution_aliquots_sequence(rows, plate_name)
+                # Wait for the sequence to complete before starting the next plate
+                # The sequence runs in a thread, so we need to wait for it to finish
+                # We'll use a simple polling approach
+                while hasattr(self, '_dilution_aliquots_running') and self._dilution_aliquots_running:
+                    time.sleep(0.1)
+
+        self.log_command("[DIL+ALIQ ALL] All plates execution complete.")
 
     def _update_falcon_exclusivity(self):
         # Include both Falcon and 4mL vials for destination exclusivity
