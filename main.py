@@ -3450,6 +3450,8 @@ class LiquidHandlerApp:
         if combo_str.startswith("4mL"): return "4ML", combo_str.replace("4mL ", "")
         if combo_str.startswith("Falcon"): return "FALCON", combo_str.replace("Falcon ", "")
         if combo_str.startswith("Wash") or combo_str.startswith("Waste"): return "WASH", combo_str
+        if combo_str.startswith("PLATE_LEFT"): return "PLATE_LEFT", combo_str.replace("PLATE_LEFT ", "")
+        if combo_str.startswith("PLATE_RIGHT"): return "PLATE_RIGHT", combo_str.replace("PLATE_RIGHT ", "")
         if combo_str.startswith("PLATE"): return "PLATE", combo_str.replace("PLATE ", "")
         return "Unknown", combo_str
 
