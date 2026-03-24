@@ -138,6 +138,24 @@ PLATE_CONFIG_DEFAULT = {
     "Z_DISPENSE": -10.5
 }
 
+# --- 96 WELL PLATE LEFT CONFIGURATION DEFAULT (Relative Offsets) ---
+PLATE_LEFT_CONFIG_DEFAULT = {
+    "A1_X": -104.6, "A1_Y": 112.1,
+    "H12_X": -5.4, "H12_Y": 49.3,
+    "Z_SAFE": 2.2,
+    "Z_ASPIRATE": -30.5,
+    "Z_DISPENSE": -10.5
+}
+
+# --- 96 WELL PLATE RIGHT CONFIGURATION DEFAULT (Relative Offsets) ---
+PLATE_RIGHT_CONFIG_DEFAULT = {
+    "A1_X": -104.6, "A1_Y": 112.1,
+    "H12_X": -5.4, "H12_Y": 49.3,
+    "Z_SAFE": 2.2,
+    "Z_ASPIRATE": -30.5,
+    "Z_DISPENSE": -10.5
+}
+
 # --- FALCON RACK CONFIGURATION DEFAULT (Relative Offsets) ---
 # 15mL Falcon Grid: 3 rows (A-C) x 4 columns (1-4)
 FALCON_RACK_CONFIG_DEFAULT = {
@@ -180,6 +198,8 @@ FILTER_EPPI_RACK_CONFIG_DEFAULT = {
 EJECT_STATION_CONFIG = EJECT_STATION_CONFIG_DEFAULT.copy()
 TIP_RACK_CONFIG = TIP_RACK_CONFIG_DEFAULT.copy()
 PLATE_CONFIG = PLATE_CONFIG_DEFAULT.copy()
+PLATE_LEFT_CONFIG = PLATE_LEFT_CONFIG_DEFAULT.copy()
+PLATE_RIGHT_CONFIG = PLATE_RIGHT_CONFIG_DEFAULT.copy()
 FALCON_RACK_CONFIG = FALCON_RACK_CONFIG_DEFAULT.copy()
 WASH_RACK_CONFIG = WASH_RACK_CONFIG_DEFAULT.copy()
 _4ML_RACK_CONFIG = _4ML_RACK_CONFIG_DEFAULT.copy()
@@ -330,6 +350,8 @@ class LiquidHandlerApp:
         self.plate_rows = ["A", "B", "C", "D", "E", "F", "G", "H"]
         self.plate_cols = [str(i) for i in range(1, 13)]
         self.plate_wells = [f"{r}{c}" for r in self.plate_rows for c in self.plate_cols]
+        self.plate_wells_left = [f"{r}{c}" for r in self.plate_rows for c in self.plate_cols]
+        self.plate_wells_right = [f"{r}{c}" for r in self.plate_rows for c in self.plate_cols]
 
         self.falcon_positions = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "50mL"]
         self.wash_positions = ["Wash A", "Wash B", "Wash C", "Trash"]
@@ -343,6 +365,8 @@ class LiquidHandlerApp:
         # --- MODULE MAPPING FOR DYNAMIC DROPDOWNS ---
         self.module_options_map = {
             "96 Well Plate": self.plate_wells,
+            "96 Well Plate Left": self.plate_wells_left,
+            "96 Well Plate Right": self.plate_wells_right,
             "Falcon Rack": self.falcon_positions,
             "4mL Rack": self._4ml_positions,
             "Filter Eppi": self.filter_eppi_positions,
@@ -362,6 +386,16 @@ class LiquidHandlerApp:
             "PLATE": {
                 "label": "96 Well Plate", "var": tk.StringVar(), "values": self.plate_wells,
                 "btn_text": "GO", "cmd": lambda: self.generic_move_sequence("PLATE", self.modules["PLATE"]["var"].get())
+            },
+            "PLATE_LEFT": {
+                "label": "96 Well Plate Left", "var": tk.StringVar(), "values": self.plate_wells_left,
+                "btn_text": "GO",
+                "cmd": lambda: self.generic_move_sequence("PLATE_LEFT", self.modules["PLATE_LEFT"]["var"].get())
+            },
+            "PLATE_RIGHT": {
+                "label": "96 Well Plate Right", "var": tk.StringVar(), "values": self.plate_wells_right,
+                "btn_text": "GO",
+                "cmd": lambda: self.generic_move_sequence("PLATE_RIGHT", self.modules["PLATE_RIGHT"]["var"].get())
             },
             "FALCON": {
                 "label": "Falcon Rack", "var": tk.StringVar(), "values": self.falcon_positions,
@@ -419,6 +453,8 @@ class LiquidHandlerApp:
         self.module_z_heights = {
             "tip rack": ["Z_TRAVEL", "Z_PICK", "Z_CALIBRATE"],
             "96 well plate": ["Z_SAFE", "Z_ASPIRATE", "Z_DISPENSE", "Z_CALIBRATE"],
+            "96 well plate left": ["Z_SAFE", "Z_ASPIRATE", "Z_DISPENSE", "Z_CALIBRATE"],
+            "96 well plate right": ["Z_SAFE", "Z_ASPIRATE", "Z_DISPENSE", "Z_CALIBRATE"],
             "15 mL falcon rack": ["Z_SAFE", "Z_ASPIRATE", "Z_DISPENSE", "Z_CALIBRATE"],
             "50 mL falcon rack": ["Z_SAFE", "Z_ASPIRATE", "Z_DISPENSE", "Z_CALIBRATE"],
             "wash rack": ["Z_SAFE", "Z_ASPIRATE", "Z_DISPENSE", "Z_CALIBRATE"],
@@ -442,7 +478,7 @@ class LiquidHandlerApp:
     def load_calibration_config(self):
         global CALIBRATION_PIN_CONFIG, CENTER_CONFIG, PARKING_CONFIG, PIPETTE_CONFIG, VOLATILE_CONFIG
         global MANUAL_CONTROL_CONFIG, COMMUNICATION_CONFIG, EJECT_STATION_CONFIG, TIP_RACK_CONFIG
-        global PLATE_CONFIG, FALCON_RACK_CONFIG, WASH_RACK_CONFIG, _4ML_RACK_CONFIG, FILTER_EPPI_RACK_CONFIG
+        global PLATE_CONFIG, PLATE_LEFT_CONFIG, PLATE_RIGHT_CONFIG, FALCON_RACK_CONFIG, WASH_RACK_CONFIG, _4ML_RACK_CONFIG, FILTER_EPPI_RACK_CONFIG
         global EPPI_RACK_CONFIG, HPLC_VIAL_RACK_CONFIG, HPLC_VIAL_INSERT_RACK_CONFIG, SCREWCAP_VIAL_RACK_CONFIG
         global GLOBAL_SAFE_Z_OFFSET, SAFE_CENTER_X_OFFSET, SAFE_CENTER_Y_OFFSET
         global PARK_HEAD_X, PARK_HEAD_Y, PARK_HEAD_Z
@@ -522,6 +558,12 @@ class LiquidHandlerApp:
 
                     if "PLATE_CONFIG" in config:
                         PLATE_CONFIG.update(config["PLATE_CONFIG"])
+
+                    if "PLATE_LEFT_CONFIG" in config:
+                        PLATE_LEFT_CONFIG.update(config["PLATE_LEFT_CONFIG"])
+
+                    if "PLATE_RIGHT_CONFIG" in config:
+                        PLATE_RIGHT_CONFIG.update(config["PLATE_RIGHT_CONFIG"])
 
                     if "FALCON_RACK_CONFIG" in config:
                         FALCON_RACK_CONFIG.update(config["FALCON_RACK_CONFIG"])
@@ -1088,6 +1130,8 @@ class LiquidHandlerApp:
         internal_to_ui_map = {
             "FALCON": "Falcon Rack",
             "PLATE": "96 Well Plate",
+            "PLATE_LEFT": "96 Well Plate Left",
+            "PLATE_RIGHT": "96 Well Plate Right",
             "4ML": "4mL Rack",
             "FILTER_EPPI": "Filter Eppi",
             "EPPI": "Eppi Rack",
@@ -2613,7 +2657,7 @@ class LiquidHandlerApp:
         nav_frame = ttk.LabelFrame(scroll_frame, text="Navigation & Workflows", padding=2)
         nav_frame.pack(fill="both", expand=True, padx=5, pady=2)
         module_order = ["TIPS", "PLATE", "FALCON", "WASH", "4ML", "FILTER_EPPI", "EPPI", "HPLC", "HPLC_INSERT",
-                        "SCREWCAP"]
+                        "SCREWCAP", "PLATE_LEFT", "PLATE_RIGHT"]
         for i, mod_key in enumerate(module_order):
             mod_data = self.modules[mod_key]
             row = i // 2
@@ -2711,7 +2755,8 @@ class LiquidHandlerApp:
         ttk.Label(module_row, text="Module:").pack(side="left", padx=(0, 5))
 
         module_options = [
-            "tip rack", "96 well plate", "15 mL falcon rack", "50 mL falcon rack",
+            "tip rack", "96 well plate", "96 well plate left", "96 well plate right", "15 mL falcon rack",
+            "50 mL falcon rack",
             "wash rack", "4mL rack", "filter eppi rack", "eppi rack",
             "hplc vial insert rack", "screwcap vial rack"
         ]
@@ -3278,6 +3323,9 @@ class LiquidHandlerApp:
         prefix = parts[0]
         suffix = parts[1]
         if combo_str.startswith("96Well"): return "PLATE", combo_str.replace("96Well ", "")
+        if combo_str.startswith("96 Well Plate Left"): return "PLATE_LEFT", combo_str.replace("96 Well Plate Left ", "")
+        if combo_str.startswith("96 Well Plate Right"): return "PLATE_RIGHT", combo_str.replace("96 Well Plate Right ",
+                                                                                                "")
         if combo_str.startswith("Filter Eppi"): return "FILTER_EPPI", combo_str.replace("Filter Eppi ", "")
         if combo_str.startswith("Eppi"): return "EPPI", combo_str.replace("Eppi ", "")
         if combo_str.startswith("HPLC Insert"): return "HPLC_INSERT", combo_str.replace("HPLC Insert ", "")
@@ -3291,6 +3339,8 @@ class LiquidHandlerApp:
 
     def _construct_combo_string(self, mod_name, pos_name):
         if mod_name == "96 Well Plate": return f"PLATE {pos_name}"
+        if mod_name == "96 Well Plate Left": return f"PLATE_LEFT {pos_name}"
+        if mod_name == "96 Well Plate Right": return f"PLATE_RIGHT {pos_name}"
         if mod_name == "Falcon Rack": return f"Falcon {pos_name}"
         if mod_name == "4mL Rack": return f"4mL {pos_name}"
         if mod_name == "Filter Eppi": return f"Filter Eppi {pos_name}"
@@ -3353,6 +3403,16 @@ class LiquidHandlerApp:
             rel_safe_z = PLATE_CONFIG["Z_SAFE"]
             rel_asp_z = PLATE_CONFIG["Z_ASPIRATE"]
             rel_disp_z = PLATE_CONFIG["Z_DISPENSE"]
+        elif mod_name == "PLATE_LEFT":
+            x, y = self.get_plate_left_coordinates(pos_key)
+            rel_safe_z = PLATE_LEFT_CONFIG["Z_SAFE"]
+            rel_asp_z = PLATE_LEFT_CONFIG["Z_ASPIRATE"]
+            rel_disp_z = PLATE_LEFT_CONFIG["Z_DISPENSE"]
+        elif mod_name == "PLATE_RIGHT":
+            x, y = self.get_plate_right_coordinates(pos_key)
+            rel_safe_z = PLATE_RIGHT_CONFIG["Z_SAFE"]
+            rel_asp_z = PLATE_RIGHT_CONFIG["Z_ASPIRATE"]
+            rel_disp_z = PLATE_RIGHT_CONFIG["Z_DISPENSE"]
 
         abs_safe_z = self.resolve_coords(0, 0, rel_safe_z)[2]
         abs_asp_z = self.resolve_coords(0, 0, rel_asp_z)[2]
@@ -3375,6 +3435,26 @@ class LiquidHandlerApp:
         col_idx = col_num - 1
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_CONFIG["A1_X"], PLATE_CONFIG["A1_Y"],
                                                PLATE_CONFIG["H12_X"], PLATE_CONFIG["H12_Y"])
+        return self.resolve_coords(rx, ry)
+
+    def get_plate_left_coordinates(self, well_key):
+        row_char = well_key[0]
+        col_num = int(well_key[1:])
+        row_idx = self.plate_rows.index(row_char)
+        col_idx = col_num - 1
+        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_LEFT_CONFIG["A1_X"],
+                                               PLATE_LEFT_CONFIG["A1_Y"],
+                                               PLATE_LEFT_CONFIG["H12_X"], PLATE_LEFT_CONFIG["H12_Y"])
+        return self.resolve_coords(rx, ry)
+
+    def get_plate_right_coordinates(self, well_key):
+        row_char = well_key[0]
+        col_num = int(well_key[1:])
+        row_idx = self.plate_rows.index(row_char)
+        col_idx = col_num - 1
+        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_RIGHT_CONFIG["A1_X"],
+                                               PLATE_RIGHT_CONFIG["A1_Y"],
+                                               PLATE_RIGHT_CONFIG["H12_X"], PLATE_RIGHT_CONFIG["H12_Y"])
         return self.resolve_coords(rx, ry)
 
     def get_falcon_coordinates(self, falcon_key):
@@ -3597,7 +3677,8 @@ class LiquidHandlerApp:
             messagebox.showerror("Unsafe Action", "Cannot pipette here.")
             return
         config_map = {
-            "PLATE": PLATE_CONFIG, "FALCON": FALCON_RACK_CONFIG, "WASH": WASH_RACK_CONFIG,
+            "PLATE": PLATE_CONFIG, "PLATE_LEFT": PLATE_LEFT_CONFIG, "PLATE_RIGHT": PLATE_RIGHT_CONFIG,
+            "FALCON": FALCON_RACK_CONFIG, "WASH": WASH_RACK_CONFIG,
             "4ML": _4ML_RACK_CONFIG, "FILTER_EPPI": FILTER_EPPI_RACK_CONFIG,
             "EPPI": EPPI_RACK_CONFIG, "HPLC": HPLC_VIAL_RACK_CONFIG,
             "HPLC_INSERT": HPLC_VIAL_INSERT_RACK_CONFIG, "SCREWCAP": SCREWCAP_VIAL_RACK_CONFIG
@@ -3678,7 +3759,8 @@ class LiquidHandlerApp:
             messagebox.showerror("Unsafe Action", "Cannot mix here.")
             return
         config_map = {
-            "PLATE": PLATE_CONFIG, "FALCON": FALCON_RACK_CONFIG, "WASH": WASH_RACK_CONFIG,
+            "PLATE": PLATE_CONFIG, "PLATE_LEFT": PLATE_LEFT_CONFIG, "PLATE_RIGHT": PLATE_RIGHT_CONFIG,
+            "FALCON": FALCON_RACK_CONFIG, "WASH": WASH_RACK_CONFIG,
             "4ML": _4ML_RACK_CONFIG, "FILTER_EPPI": FILTER_EPPI_RACK_CONFIG,
             "EPPI": EPPI_RACK_CONFIG, "HPLC": HPLC_VIAL_RACK_CONFIG,
             "HPLC_INSERT": HPLC_VIAL_INSERT_RACK_CONFIG, "SCREWCAP": SCREWCAP_VIAL_RACK_CONFIG
@@ -5042,6 +5124,8 @@ class LiquidHandlerApp:
         config_map = {
             "tip rack": TIP_RACK_CONFIG,
             "96 well plate": PLATE_CONFIG,
+            "96 well plate left": PLATE_LEFT_CONFIG,
+            "96 well plate right": PLATE_RIGHT_CONFIG,
             "15 mL falcon rack": FALCON_RACK_CONFIG,
             "50 mL falcon rack": FALCON_RACK_CONFIG,
             "wash rack": WASH_RACK_CONFIG,
@@ -5058,6 +5142,8 @@ class LiquidHandlerApp:
         positions = {
             "tip rack": ("A1", "F4"),
             "96 well plate": ("A1", "H12"),
+            "96 well plate left": ("A1", "H12"),
+            "96 well plate right": ("A1", "H12"),
             "15 mL falcon rack": ("A1", "C4"),
             "50 mL falcon rack": ("50mL", "50mL"),  # Single position
             "wash rack": ("Wash A", "Trash"),
@@ -5112,6 +5198,12 @@ class LiquidHandlerApp:
                 safe_z = self.resolve_coords(0, 0, module_config["Z_TRAVEL"])[2]
             elif module_name == "96 well plate":
                 x, y = self.get_well_coordinates(position)
+                safe_z = self.resolve_coords(0, 0, module_config["Z_SAFE"])[2]
+            elif module_name == "96 well plate left":
+                x, y = self.get_plate_left_coordinates(position)
+                safe_z = self.resolve_coords(0, 0, module_config["Z_SAFE"])[2]
+            elif module_name == "96 well plate right":
+                x, y = self.get_plate_right_coordinates(position)
                 safe_z = self.resolve_coords(0, 0, module_config["Z_SAFE"])[2]
             elif module_name in ["15 mL falcon rack", "50 mL falcon rack"]:
                 x, y = self.get_falcon_coordinates(position)
@@ -5348,6 +5440,28 @@ class LiquidHandlerApp:
                     full_config["PLATE_CONFIG"]["H12_X"] = rel_x
                     full_config["PLATE_CONFIG"]["H12_Y"] = rel_y
                 full_config["PLATE_CONFIG"][self.current_calibration_z_height] = rel_z
+
+            elif module_name == "96 well plate left":
+                if "PLATE_LEFT_CONFIG" not in full_config:
+                    full_config["PLATE_LEFT_CONFIG"] = {}
+                if position == "A1":
+                    full_config["PLATE_LEFT_CONFIG"]["A1_X"] = rel_x
+                    full_config["PLATE_LEFT_CONFIG"]["A1_Y"] = rel_y
+                elif position == "H12":
+                    full_config["PLATE_LEFT_CONFIG"]["H12_X"] = rel_x
+                    full_config["PLATE_LEFT_CONFIG"]["H12_Y"] = rel_y
+                full_config["PLATE_LEFT_CONFIG"][self.current_calibration_z_height] = rel_z
+
+            elif module_name == "96 well plate right":
+                if "PLATE_RIGHT_CONFIG" not in full_config:
+                    full_config["PLATE_RIGHT_CONFIG"] = {}
+                if position == "A1":
+                    full_config["PLATE_RIGHT_CONFIG"]["A1_X"] = rel_x
+                    full_config["PLATE_RIGHT_CONFIG"]["A1_Y"] = rel_y
+                elif position == "H12":
+                    full_config["PLATE_RIGHT_CONFIG"]["H12_X"] = rel_x
+                    full_config["PLATE_RIGHT_CONFIG"]["H12_Y"] = rel_y
+                full_config["PLATE_RIGHT_CONFIG"][self.current_calibration_z_height] = rel_z
 
             elif module_name == "15 mL falcon rack":
                 if "FALCON_RACK_CONFIG" not in full_config:
@@ -5814,6 +5928,12 @@ class LiquidHandlerApp:
         elif module_name == "SCREWCAP":
             x, y = self.get_1x8_rack_coordinates(target_pos, SCREWCAP_VIAL_RACK_CONFIG, "F")
             rel_safe_z = SCREWCAP_VIAL_RACK_CONFIG["Z_SAFE"]
+        elif module_name == "PLATE_LEFT":
+            x, y = self.get_plate_left_coordinates(target_pos)
+            rel_safe_z = PLATE_LEFT_CONFIG["Z_SAFE"]
+        elif module_name == "PLATE_RIGHT":
+            x, y = self.get_plate_right_coordinates(target_pos)
+            rel_safe_z = PLATE_RIGHT_CONFIG["Z_SAFE"]
         abs_safe_z = self.resolve_coords(0, 0, rel_safe_z)[2]
         self.log_line(f"[SYSTEM] Moving to {module_name} : {target_pos}...")
         self.log_command(f"Move: {module_name} {target_pos}")

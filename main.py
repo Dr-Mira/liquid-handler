@@ -22,14 +22,14 @@ from datetime import datetime
 
 # --- CALIBRATION PIN ANCHOR (The Reference Point) ---
 CALIBRATION_PIN_CONFIG_DEFAULT = {
-    "PIN_X": 109.7,
-    "PIN_Y": 112.0,
+    "PIN_X": 109.5,
+    "PIN_Y": 111.4,
     "PIN_Z": 133.7
 }
 
 # Center Default Configuration
 CENTER_CONFIG_DEFAULT = {
-    "GLOBAL_SAFE_Z_OFFSET": 37.2,
+    "GLOBAL_SAFE_Z_OFFSET": 36.2,
     "SAFE_CENTER_X_OFFSET": 0.8,
     "SAFE_CENTER_Y_OFFSET": -4.3
 }
@@ -116,55 +116,65 @@ EJECT_STATION_CONFIG_DEFAULT = {
     "APPROACH_X": 78.5,
     "APPROACH_Y": 71.1,
     "Z_SAFE": 32.2,
-    "Z_EJECT_START": 2.0,
+    "Z_EJECT_START": 1.0,
     "EJECT_TARGET_Y": 106.7,
     "Z_RETRACT": 32.2
 }
 
 # --- TIP RACK CONFIGURATION DEFAULT (Relative Offsets) ---
 TIP_RACK_CONFIG_DEFAULT = {
-    "A1_X": 69.4, "A1_Y": 31.0,
-    "F4_X": 99.8, "F4_Y": -18.9,
+    "A1_X": 69.4, "A1_Y": 31.4,
+    "F4_X": 99.2, "F4_Y": -18.3,
     "Z_TRAVEL": 27.2,
-    "Z_PICK": -62.8
+    "Z_PICK": -64.2,
+    "Z_CALIBRATE": -48.2,
+    "ORIENTATION": "horizontal"
 }
 
 # --- 96 WELL PLATE CONFIGURATION DEFAULT (Relative Offsets) ---
 PLATE_CONFIG_DEFAULT = {
-    "A1_X": -104.6, "A1_Y": 112.1,
+    "A1_X": -104.1, "A1_Y": 112.8,
     "H12_X": -5.4, "H12_Y": 49.3,
-    "Z_SAFE": 2.2,
-    "Z_ASPIRATE": -30.5,
-    "Z_DISPENSE": -10.5
+    "Z_SAFE": 28.0,
+    "Z_ASPIRATE": -6.8,
+    "Z_DISPENSE": 20.2,
+    "Z_CALIBRATE": 22.7,
+    "ORIENTATION": "horizontal"
 }
 
 # --- 96 WELL PLATE LEFT CONFIGURATION DEFAULT (Relative Offsets) ---
 PLATE_LEFT_CONFIG_DEFAULT = {
-    "A1_X": -104.6, "A1_Y": 112.1,
-    "H12_X": -5.4, "H12_Y": 49.3,
-    "Z_SAFE": 2.2,
-    "Z_ASPIRATE": -30.5,
-    "Z_DISPENSE": -10.5
+    "A1_X": -43.1, "A1_Y": -22.2,
+    "H12_X": -108.4, "H12_Y": -120.8,
+    "Z_SAFE": 28.0,
+    "Z_ASPIRATE": -6.8,
+    "Z_DISPENSE": 20.2,
+    "Z_CALIBRATE": 22.7,
+    "ORIENTATION": "vertical"
 }
 
 # --- 96 WELL PLATE RIGHT CONFIGURATION DEFAULT (Relative Offsets) ---
 PLATE_RIGHT_CONFIG_DEFAULT = {
-    "A1_X": -104.6, "A1_Y": 112.1,
-    "H12_X": -5.4, "H12_Y": 49.3,
-    "Z_SAFE": 2.2,
-    "Z_ASPIRATE": -30.5,
-    "Z_DISPENSE": -10.5
+    "A1_X": 42.9, "A1_Y": -22.2,
+    "H12_X": -19.4, "H12_Y": -121.4,
+    "Z_SAFE": 28.0,
+    "Z_ASPIRATE": -6.8,
+    "Z_DISPENSE": 20.2,
+    "Z_CALIBRATE": 22.7,
+    "ORIENTATION": "vertical"
 }
 
 # --- FALCON RACK CONFIGURATION DEFAULT (Relative Offsets) ---
 # 15mL Falcon Grid: 3 rows (A-C) x 4 columns (1-4)
 FALCON_RACK_CONFIG_DEFAULT = {
-    "15ML_A1_X": -94.9, "15ML_A1_Y": 15.8,
-    "15ML_C4_X": -57.0, "15ML_C4_Y": -24.6,
-    "50ML_X": -31.3, "50ML_Y": 5.5,
+    "15ML_A1_X": -114.9, "15ML_A1_Y": 27.1,
+    "15ML_C4_X": -55.1, "15ML_C4_Y": -12.8,
+    "50ML_X": -27.9, "50ML_Y": 7.8,
     "Z_SAFE": 37.2,
-    "Z_ASPIRATE": -85.0,
-    "Z_DISPENSE": 22.2
+    "Z_ASPIRATE": -86.1,
+    "Z_DISPENSE": 23.2,
+    "Z_CALIBRATE": -35.8,
+    "ORIENTATION": "horizontal"
 }
 
 # --- WASH STATION CONFIGURATION DEFAULT (Relative Offsets) ---
@@ -173,7 +183,9 @@ WASH_RACK_CONFIG_DEFAULT = {
     "B2_X": 88.3, "B2_Y": -88.0,
     "Z_SAFE": 37.2,
     "Z_ASPIRATE": -52.8,
-    "Z_DISPENSE": 12.2
+    "Z_DISPENSE": 12.2,
+    "Z_CALIBRATE": -35.8,
+    "ORIENTATION": "horizontal"
 }
 
 # --- 4 ML RACK CONFIGURATION DEFAULT (Relative Offsets) ---
@@ -182,7 +194,9 @@ _4ML_RACK_CONFIG_DEFAULT = {
     "A8_X": 12.4, "A8_Y": -34.6,
     "Z_SAFE": 13.8,
     "Z_ASPIRATE": -31.5,
-    "Z_DISPENSE": -1.0
+    "Z_DISPENSE": -1.0,
+    "Z_CALIBRATE": -6.3,
+    "ORIENTATION": "horizontal"
 }
 
 # --- FILTER EPPI RACK CONFIGURATION DEFAULT (Row B) (Relative Offsets) ---
@@ -191,7 +205,9 @@ FILTER_EPPI_RACK_CONFIG_DEFAULT = {
     "B8_X": 12.4, "B8_Y": -51.2,
     "Z_SAFE": 13.8,
     "Z_ASPIRATE": -14.2,
-    "Z_DISPENSE": 2.2
+    "Z_DISPENSE": 2.2,
+    "Z_CALIBRATE": -4.1,
+    "ORIENTATION": "horizontal"
 }
 
 # --- ACTIVE CONFIGURATIONS (Will be overwritten by JSON if exists) ---
@@ -210,8 +226,10 @@ EPPI_RACK_CONFIG_DEFAULT = {
     "C1_X": -113.6, "C1_Y": -66.2,
     "C8_X": 12.2, "C8_Y": -67.2,
     "Z_SAFE": 13.8,
-    "Z_ASPIRATE": -35.2,
-    "Z_DISPENSE": -2.8
+    "Z_ASPIRATE": -36.1,
+    "Z_DISPENSE": -2.8,
+    "Z_CALIBRATE": -4.8,
+    "ORIENTATION": "horizontal"
 }
 
 # --- HPLC VIAL RACK CONFIGURATION DEFAULT (Row D) (Relative Offsets) ---
@@ -220,7 +238,9 @@ HPLC_VIAL_RACK_CONFIG_DEFAULT = {
     "D8_X": 12.4, "D8_Y": -81.7,
     "Z_SAFE": 13.8,
     "Z_ASPIRATE": -19.2,
-    "Z_DISPENSE": 2.2
+    "Z_DISPENSE": 2.2,
+    "Z_CALIBRATE": -6.3,
+    "ORIENTATION": "horizontal"
 }
 
 # --- HPLC VIAL INSERT RACK CONFIGURATION DEFAULT (Row E) (Relative Offsets) ---
@@ -229,7 +249,9 @@ HPLC_VIAL_INSERT_RACK_CONFIG_DEFAULT = {
     "E8_X": 12.9, "E8_Y": -98.7,
     "Z_SAFE": 13.8,
     "Z_ASPIRATE": -2.3,
-    "Z_DISPENSE": 2.2
+    "Z_DISPENSE": 2.2,
+    "Z_CALIBRATE": -5.3,
+    "ORIENTATION": "horizontal"
 }
 
 # --- SCREWCAP VIAL RACK CONFIGURATION DEFAULT (Row F) (Relative Offsets) ---
@@ -238,7 +260,9 @@ SCREWCAP_VIAL_RACK_CONFIG_DEFAULT = {
     "F8_X": 12.9, "F8_Y": -114.2,
     "Z_SAFE": 13.8,
     "Z_ASPIRATE": -31.9,
-    "Z_DISPENSE": -2.8
+    "Z_DISPENSE": -2.8,
+    "Z_CALIBRATE": -5.3,
+    "ORIENTATION": "horizontal"
 }
 
 # --- ACTIVE CONFIGURATIONS (Will be overwritten by JSON if exists) ---
@@ -3293,17 +3317,42 @@ class LiquidHandlerApp:
             return abs_x, abs_y, abs_z
         return abs_x, abs_y
 
-    def _get_interpolated_coords(self, col_idx, row_idx, num_cols, num_rows, start_x, start_y, end_x, end_y):
-        if num_cols > 1:
-            x_step = (end_x - start_x) / (num_cols - 1)
-            x_pos = start_x + (col_idx * x_step)
+    def _get_interpolated_coords(self, col_idx, row_idx, num_cols, num_rows, start_x, start_y, end_x, end_y, orientation="horizontal"):
+        """
+        Calculate interpolated coordinates for a well position.
+        
+        For horizontal orientation:
+        - X axis corresponds to columns (1-12)
+        - Y axis corresponds to rows (A-H)
+        
+        For vertical orientation (rotated 90 degrees):
+        - X axis corresponds to rows (A-H)
+        - Y axis corresponds to columns (1-12)
+        """
+        if orientation == "vertical":
+            # For vertical plates, swap the logic
+            if num_rows > 1:
+                x_step = (end_x - start_x) / (num_rows - 1)
+                x_pos = start_x + (row_idx * x_step)
+            else:
+                x_pos = start_x
+            if num_cols > 1:
+                y_step = (end_y - start_y) / (num_cols - 1)
+                y_pos = start_y + (col_idx * y_step)
+            else:
+                y_pos = start_y
         else:
-            x_pos = start_x
-        if num_rows > 1:
-            y_step = (end_y - start_y) / (num_rows - 1)
-            y_pos = start_y + (row_idx * y_step)
-        else:
-            y_pos = start_y
+            # For horizontal plates (default)
+            if num_cols > 1:
+                x_step = (end_x - start_x) / (num_cols - 1)
+                x_pos = start_x + (col_idx * x_step)
+            else:
+                x_pos = start_x
+            if num_rows > 1:
+                y_step = (end_y - start_y) / (num_rows - 1)
+                y_pos = start_y + (row_idx * y_step)
+            else:
+                y_pos = start_y
         return x_pos, y_pos
 
     def _parse_combo_string(self, combo_str):
@@ -3413,8 +3462,9 @@ class LiquidHandlerApp:
         col_num = int(tip_key[1])
         row_idx = self.tip_rows.index(row_char)
         col_idx = col_num - 1
+        orientation = TIP_RACK_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 4, 6, TIP_RACK_CONFIG["A1_X"], TIP_RACK_CONFIG["A1_Y"],
-                                               TIP_RACK_CONFIG["F4_X"], TIP_RACK_CONFIG["F4_Y"])
+                                               TIP_RACK_CONFIG["F4_X"], TIP_RACK_CONFIG["F4_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_well_coordinates(self, well_key):
@@ -3422,8 +3472,9 @@ class LiquidHandlerApp:
         col_num = int(well_key[1:])
         row_idx = self.plate_rows.index(row_char)
         col_idx = col_num - 1
+        orientation = PLATE_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_CONFIG["A1_X"], PLATE_CONFIG["A1_Y"],
-                                               PLATE_CONFIG["H12_X"], PLATE_CONFIG["H12_Y"])
+                                               PLATE_CONFIG["H12_X"], PLATE_CONFIG["H12_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_plate_left_coordinates(self, well_key):
@@ -3431,8 +3482,9 @@ class LiquidHandlerApp:
         col_num = int(well_key[1:])
         row_idx = self.plate_rows.index(row_char)
         col_idx = col_num - 1
+        orientation = PLATE_LEFT_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_LEFT_CONFIG["A1_X"], PLATE_LEFT_CONFIG["A1_Y"],
-                                               PLATE_LEFT_CONFIG["H12_X"], PLATE_LEFT_CONFIG["H12_Y"])
+                                               PLATE_LEFT_CONFIG["H12_X"], PLATE_LEFT_CONFIG["H12_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_plate_right_coordinates(self, well_key):
@@ -3440,8 +3492,9 @@ class LiquidHandlerApp:
         col_num = int(well_key[1:])
         row_idx = self.plate_rows.index(row_char)
         col_idx = col_num - 1
+        orientation = PLATE_RIGHT_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_RIGHT_CONFIG["A1_X"], PLATE_RIGHT_CONFIG["A1_Y"],
-                                               PLATE_RIGHT_CONFIG["H12_X"], PLATE_RIGHT_CONFIG["H12_Y"])
+                                               PLATE_RIGHT_CONFIG["H12_X"], PLATE_RIGHT_CONFIG["H12_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_falcon_coordinates(self, falcon_key):
@@ -3453,25 +3506,28 @@ class LiquidHandlerApp:
         if row_char not in falcon_rows: return 0.0, 0.0
         row_idx = falcon_rows.index(row_char)
         col_idx = col_num - 1
+        orientation = FALCON_RACK_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 4, 3, FALCON_RACK_CONFIG["15ML_A1_X"],
                                                FALCON_RACK_CONFIG["15ML_A1_Y"], FALCON_RACK_CONFIG["15ML_C4_X"],
-                                               FALCON_RACK_CONFIG["15ML_C4_Y"])
+                                               FALCON_RACK_CONFIG["15ML_C4_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_wash_coordinates(self, wash_name):
         mapping = {"Wash A": (0, 0), "Wash B": (1, 0), "Wash C": (0, 1), "Trash": (1, 1)}
         col_idx, row_idx = mapping.get(wash_name, (0, 0))
+        orientation = WASH_RACK_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, row_idx, 2, 2, WASH_RACK_CONFIG["A1_X"],
                                                WASH_RACK_CONFIG["A1_Y"],
-                                               WASH_RACK_CONFIG["B2_X"], WASH_RACK_CONFIG["B2_Y"])
+                                               WASH_RACK_CONFIG["B2_X"], WASH_RACK_CONFIG["B2_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_4ml_coordinates(self, key):
         if not key.startswith("A"): return 0.0, 0.0
         col_num = int(key[1:])
         col_idx = col_num - 1
+        orientation = _4ML_RACK_CONFIG.get("ORIENTATION", "horizontal")
         rx, ry = self._get_interpolated_coords(col_idx, 0, 8, 1, _4ML_RACK_CONFIG["A1_X"], _4ML_RACK_CONFIG["A1_Y"],
-                                               _4ML_RACK_CONFIG["A8_X"], _4ML_RACK_CONFIG["A8_Y"])
+                                               _4ML_RACK_CONFIG["A8_X"], _4ML_RACK_CONFIG["A8_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_1x8_rack_coordinates(self, key, config, row_char):
@@ -3485,7 +3541,8 @@ class LiquidHandlerApp:
         start_y = config[f"{row_char}1_Y"]
         end_x = config[f"{row_char}8_X"]
         end_y = config[f"{row_char}8_Y"]
-        rx, ry = self._get_interpolated_coords(col_idx, 0, 8, 1, start_x, start_y, end_x, end_y)
+        orientation = config.get("ORIENTATION", "horizontal")
+        rx, ry = self._get_interpolated_coords(col_idx, 0, 8, 1, start_x, start_y, end_x, end_y, orientation)
         return self.resolve_coords(rx, ry)
 
     # ==========================================
