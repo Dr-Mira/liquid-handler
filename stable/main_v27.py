@@ -1723,7 +1723,7 @@ class LiquidHandlerApp:
                 "execute": tk.BooleanVar(value=False),
                 "src_pos": tk.StringVar(value=f"{plate_row}1"),
                 "src_conc": tk.StringVar(value=""),
-                "diluent": tk.StringVar(value="Wash B"),
+                "diluent": tk.StringVar(value="Wash A"),
                 "aliquot_conc": tk.StringVar(value="1.25"),
                 "aliquot_vol": tk.StringVar(value="160"),
                 "bottom_offset": tk.StringVar(value="14.5"),
@@ -1765,6 +1765,23 @@ class LiquidHandlerApp:
         btn_frame = ttk.Frame(frame, padding=5)
         btn_frame.pack(fill="x", pady=5)
 
+        exec_row = ttk.Frame(btn_frame)
+        exec_row.pack(fill="x", pady=5)
+
+        exec_btn = ttk.Button(
+            exec_row,
+            text=f"EXECUTE {plate_name.upper()} SEQUENCE",
+            command=lambda r=rows, p=plate_name: threading.Thread(target=self.dilution_aliquots_sequence, args=(r, p), daemon=True).start()
+        )
+        exec_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
+
+        pause_btn = ttk.Button(
+            exec_row,
+            text="PAUSE",
+            command=self.toggle_pause
+        )
+        pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
+
         ttk.Label(
             btn_frame,
             text="Rows map to plate A-H. Source is fixed to column 1 (A1-H1), dilution wells use columns 2-8, "
@@ -1800,22 +1817,12 @@ class LiquidHandlerApp:
         btn_frame = ttk.Frame(frame, padding=5)
         btn_frame.pack(fill="x", pady=5)
 
-        exec_row = ttk.Frame(btn_frame)
-        exec_row.pack(fill="x", pady=5)
-
         exec_all_btn = ttk.Button(
-            exec_row,
+            btn_frame,
             text="EXECUTE ALL PLATES",
             command=lambda: threading.Thread(target=self.execute_all_plates, daemon=True).start()
         )
-        exec_all_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
-
-        self.dilution_aliquots_pause_btn = ttk.Button(
-            exec_row,
-            text="PAUSE",
-            command=self.toggle_pause
-        )
-        self.dilution_aliquots_pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
+        exec_all_btn.pack(fill="x", ipady=5)
 
     def _build_dilution_tab(self, parent):
         frame = ttk.Frame(parent, padding=5)
