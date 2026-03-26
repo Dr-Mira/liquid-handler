@@ -413,11 +413,13 @@ class LiquidHandlerApp:
             },
             "PLATE_LEFT": {
                 "label": "96 Well Plate Left", "var": tk.StringVar(), "values": self.plate_wells_left,
-                "btn_text": "GO", "cmd": lambda: self.generic_move_sequence("PLATE_LEFT", self.modules["PLATE_LEFT"]["var"].get())
+                "btn_text": "GO",
+                "cmd": lambda: self.generic_move_sequence("PLATE_LEFT", self.modules["PLATE_LEFT"]["var"].get())
             },
             "PLATE_RIGHT": {
                 "label": "96 Well Plate Right", "var": tk.StringVar(), "values": self.plate_wells_right,
-                "btn_text": "GO", "cmd": lambda: self.generic_move_sequence("PLATE_RIGHT", self.modules["PLATE_RIGHT"]["var"].get())
+                "btn_text": "GO",
+                "cmd": lambda: self.generic_move_sequence("PLATE_RIGHT", self.modules["PLATE_RIGHT"]["var"].get())
             },
             "FALCON": {
                 "label": "Falcon Rack", "var": tk.StringVar(), "values": self.falcon_positions,
@@ -1132,6 +1134,7 @@ class LiquidHandlerApp:
         self._apply_transfer_table_preset(preset, preset_name="Preset 5")
 
         # ==========================================
+
     #           ALIQUOT PRESETS
     # ==========================================
 
@@ -1146,7 +1149,7 @@ class LiquidHandlerApp:
             "dest_start": "",
             "dest_end": "",
         }
-        
+
         # Mapping from internal module names to UI module names
         internal_to_ui_map = {
             "FALCON": "Falcon Rack",
@@ -1161,7 +1164,7 @@ class LiquidHandlerApp:
             "SCREWCAP": "Screwcap Vial",
             "WASH": "Wash Station",
         }
-        
+
         for i, row_vars in enumerate(self.aliquot_rows):
             spec = preset_rows[i] if i < len(preset_rows) else {}
             if spec is None:
@@ -1174,7 +1177,7 @@ class LiquidHandlerApp:
             # Handle both new format (src_mod/src_pos) and old format (source)
             src_mod = spec.get("src_mod", defaults["src_mod"])
             src_pos = spec.get("src_pos", defaults["src_pos"])
-            
+
             # If old format (source) is used, parse it to extract mod and pos
             old_source = spec.get("source", "")
             if old_source and not src_mod:
@@ -1183,14 +1186,14 @@ class LiquidHandlerApp:
 
             row_vars["execute"].set(execute)
             row_vars["src_mod"].set(src_mod)
-            
+
             # Update the position combobox values based on module
             pos_combo = row_vars.get("_src_pos_combo")
             if src_mod in self.module_options_map:
                 pos_values = self.module_options_map[src_mod]
                 if pos_combo:
                     pos_combo["values"] = pos_values
-            
+
             row_vars["src_pos"].set(src_pos)
             row_vars["volume"].set(volume)
             row_vars["dest_start"].set(dest_start)
@@ -1360,7 +1363,6 @@ class LiquidHandlerApp:
              "plate_col": 9, "final_conc": 1.25},
         ]
         self._apply_dilution_preset(preset, preset_name="P3")
-
 
     def _build_combine_fractions_tab(self, parent):
         frame = ttk.Frame(parent, padding=10)
@@ -1723,7 +1725,7 @@ class LiquidHandlerApp:
                 "execute": tk.BooleanVar(value=False),
                 "src_pos": tk.StringVar(value=f"{plate_row}1"),
                 "src_conc": tk.StringVar(value=""),
-                "diluent": tk.StringVar(value="Wash A"),
+                "diluent": tk.StringVar(value="Wash B"),
                 "aliquot_conc": tk.StringVar(value="1.25"),
                 "aliquot_vol": tk.StringVar(value="160"),
                 "bottom_offset": tk.StringVar(value="14.5"),
@@ -1733,7 +1735,8 @@ class LiquidHandlerApp:
 
             ttk.Checkbutton(table, variable=row_vars["execute"]).grid(row=r, column=0, padx=2, pady=2)
             ttk.Label(table, text=f"{i + 1}", width=3, anchor="center").grid(row=r, column=1, padx=2, pady=2)
-            ttk.Label(table, textvariable=row_vars["src_pos"], width=12, anchor="center").grid(row=r, column=2, padx=2, pady=2)
+            ttk.Label(table, textvariable=row_vars["src_pos"], width=12, anchor="center").grid(row=r, column=2, padx=2,
+                                                                                               pady=2)
 
             ttk.Entry(
                 table, textvariable=row_vars["src_conc"],
@@ -1765,23 +1768,6 @@ class LiquidHandlerApp:
         btn_frame = ttk.Frame(frame, padding=5)
         btn_frame.pack(fill="x", pady=5)
 
-        exec_row = ttk.Frame(btn_frame)
-        exec_row.pack(fill="x", pady=5)
-
-        exec_btn = ttk.Button(
-            exec_row,
-            text=f"EXECUTE {plate_name.upper()} SEQUENCE",
-            command=lambda r=rows, p=plate_name: threading.Thread(target=self.dilution_aliquots_sequence, args=(r, p), daemon=True).start()
-        )
-        exec_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
-
-        pause_btn = ttk.Button(
-            exec_row,
-            text="PAUSE",
-            command=self.toggle_pause
-        )
-        pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
-
         ttk.Label(
             btn_frame,
             text="Rows map to plate A-H. Source is fixed to column 1 (A1-H1), dilution wells use columns 2-8, "
@@ -1810,19 +1796,31 @@ class LiquidHandlerApp:
 
         # Build each subtab and store rows
         self.dilution_aliquots_plate_rows = self._build_dilution_aliquots_plate_subtab(tab_plate, "plate")
-        self.dilution_aliquots_plate_left_rows = self._build_dilution_aliquots_plate_subtab(tab_plate_left, "plate left")
-        self.dilution_aliquots_plate_right_rows = self._build_dilution_aliquots_plate_subtab(tab_plate_right, "plate right")
+        self.dilution_aliquots_plate_left_rows = self._build_dilution_aliquots_plate_subtab(tab_plate_left,
+                                                                                            "plate left")
+        self.dilution_aliquots_plate_right_rows = self._build_dilution_aliquots_plate_subtab(tab_plate_right,
+                                                                                             "plate right")
 
         # Execute All Plates button
         btn_frame = ttk.Frame(frame, padding=5)
         btn_frame.pack(fill="x", pady=5)
 
+        exec_row = ttk.Frame(btn_frame)
+        exec_row.pack(fill="x", pady=5)
+
         exec_all_btn = ttk.Button(
-            btn_frame,
+            exec_row,
             text="EXECUTE ALL PLATES",
             command=lambda: threading.Thread(target=self.execute_all_plates, daemon=True).start()
         )
-        exec_all_btn.pack(fill="x", ipady=5)
+        exec_all_btn.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=5)
+
+        self.dilution_aliquots_pause_btn = ttk.Button(
+            exec_row,
+            text="PAUSE",
+            command=self.toggle_pause
+        )
+        self.dilution_aliquots_pause_btn.pack(side="left", fill="x", padx=(5, 0), ipady=5)
 
     def _build_dilution_tab(self, parent):
         frame = ttk.Frame(parent, padding=5)
@@ -1951,7 +1949,6 @@ class LiquidHandlerApp:
             font=("Arial", 8, "italic"), wraplength=900, justify="left"
         ).pack(pady=5)
 
-        
     def _compute_dilution_steps(self, src_conc, final_conc, max_vol=800.0, min_transfer=80.0, max_transfer=800.0):
         """Compute serial dilution steps needed to go from src_conc to final_conc.
         Each step produces a well with total volume = max_vol (800 uL).
@@ -2079,7 +2076,8 @@ class LiquidHandlerApp:
                     diluent_jobs[dil_src].append((well, step["diluent_vol"]))
 
             for dil_str, wells_and_vols in diluent_jobs.items():
-                self.log_line(f"[DILUTION] === PREFILL PHASE: {len(wells_and_vols)} wells with diluent from {dil_str} ===")
+                self.log_line(
+                    f"[DILUTION] === PREFILL PHASE: {len(wells_and_vols)} wells with diluent from {dil_str} ===")
                 self.last_cmd_var.set(f"Prefill: {dil_str}")
 
                 # Pick one tip for this diluent source
@@ -2339,7 +2337,8 @@ class LiquidHandlerApp:
                     self.log_line(f"[DIL+ALIQ] Skipping {p_name} line {idx + 1}: missing diluent.")
                     continue
                 if src_conc <= 0 or aliquot_conc <= 0 or aliquot_conc >= src_conc:
-                    self.log_line(f"[DIL+ALIQ] Skipping {p_name} line {idx + 1}: conc must be positive and aliquot conc < source conc.")
+                    self.log_line(
+                        f"[DIL+ALIQ] Skipping {p_name} line {idx + 1}: conc must be positive and aliquot conc < source conc.")
                     continue
                 if aliquot_vol <= 0:
                     self.log_line(f"[DIL+ALIQ] Skipping {p_name} line {idx + 1}: aliquot volume must be positive.")
@@ -2436,7 +2435,8 @@ class LiquidHandlerApp:
                     self.last_cmd_var.set(f"Prefill: {diluent_vol}uL -> {p_mod} {well_name}")
 
                     use_opt_z_dil = (current_simulated_module in SMALL_VIAL_MODULES and dil_mod in SMALL_VIAL_MODULES)
-                    travel_z_dil = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_dil else global_safe_z
+                    travel_z_dil = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
+                        2] if use_opt_z_dil else global_safe_z
 
                     cmds_asp = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
                     if current_simulated_module == dil_mod:
@@ -2457,7 +2457,8 @@ class LiquidHandlerApp:
 
                     dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
                     use_opt_z_dest = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
-                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_dest else global_safe_z
+                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
+                        2] if use_opt_z_dest else global_safe_z
 
                     cmds_disp = [
                         f"G0 Z{travel_z_dest:.2f} F{JOG_SPEED_Z}",
@@ -2515,7 +2516,8 @@ class LiquidHandlerApp:
 
                     src_mod, src_x, src_y, src_safe_z, src_asp_z, _ = self.get_coords_from_combo(asp_source)
                     use_opt_z_src = (current_simulated_module in SMALL_VIAL_MODULES and src_mod in SMALL_VIAL_MODULES)
-                    travel_z_src = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_src else global_safe_z
+                    travel_z_src = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
+                        2] if use_opt_z_src else global_safe_z
 
                     cmds = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
                     if current_simulated_module == src_mod:
@@ -2536,9 +2538,11 @@ class LiquidHandlerApp:
                     self.update_last_module(src_mod)
                     current_simulated_module = src_mod
 
-                    dest_mod, dest_x, dest_y, dest_safe_z, dest_asp_z, dest_disp_z = self.get_coords_from_combo(dest_str)
+                    dest_mod, dest_x, dest_y, dest_safe_z, dest_asp_z, dest_disp_z = self.get_coords_from_combo(
+                        dest_str)
                     use_opt_z_dest = (current_simulated_module in SMALL_VIAL_MODULES and dest_mod in SMALL_VIAL_MODULES)
-                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2] if use_opt_z_dest else global_safe_z
+                    travel_z_dest = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[
+                        2] if use_opt_z_dest else global_safe_z
 
                     cmds_disp = [
                         f"G0 Z{travel_z_dest:.2f} F{JOG_SPEED_Z}",
@@ -2856,7 +2860,8 @@ class LiquidHandlerApp:
         ttk.Label(module_row, text="Module:").pack(side="left", padx=(0, 5))
 
         module_options = [
-            "tip rack", "96 well plate", "96 well plate left", "96 well plate right", "15 mL falcon rack", "50 mL falcon rack",
+            "tip rack", "96 well plate", "96 well plate left", "96 well plate right", "15 mL falcon rack",
+            "50 mL falcon rack",
             "wash rack", "4mL rack", "filter eppi rack", "eppi rack",
             "hplc vial insert rack", "screwcap vial rack"
         ]
@@ -2870,8 +2875,8 @@ class LiquidHandlerApp:
         z_height_row.pack(fill="x", pady=(0, 10))
         ttk.Label(z_height_row, text="Z Height:").pack(side="left", padx=(0, 5))
         self.z_height_combobox = ttk.Combobox(z_height_row, textvariable=self.calibration_z_height_var,
-                                                values=self.module_z_heights["96 well plate"],
-                                                width=15, state="readonly")
+                                              values=self.module_z_heights["96 well plate"],
+                                              width=15, state="readonly")
         self.z_height_combobox.pack(side="left", padx=(0, 10))
 
         ttk.Button(module_row, text="Calibrate Module",
@@ -3004,11 +3009,11 @@ class LiquidHandlerApp:
         """
         if not self.ser or not self.ser.is_open:
             return None, None, None
-        
+
         # Use a local event to wait for response
         response_event = threading.Event()
         result = {'x': None, 'y': None, 'z': None}
-        
+
         def parse_response(line):
             match = re.search(r"X:([0-9.-]+)\s*Y:([0-9.-]+)\s*Z:([0-9.-]+)", line)
             if match:
@@ -3016,11 +3021,11 @@ class LiquidHandlerApp:
                 result['y'] = float(match.group(2))
                 result['z'] = float(match.group(3))
                 response_event.set()
-        
+
         # Temporarily add a custom parser for this request
         original_parse = self._parse_coordinates
         self._parse_coordinates = parse_response
-        
+
         try:
             self._send_raw("M114\n")
             # Wait for response with timeout
@@ -3104,12 +3109,12 @@ class LiquidHandlerApp:
             # On startup, machine usually reports 0,0,0 or unknown until homed.
             # Check live coordinates to see if machine is properly initialized
             live_x, live_y, live_z = self._get_live_coordinates(timeout=3.0)
-            
+
             # If live coordinates are valid (not magic numbers), skip popup
             if self._is_valid_coordinates(live_x, live_y, live_z):
                 self.log_line("[STARTUP] Live coordinates valid, skipping home popup.")
                 return
-            
+
             # Machine appears not homed - show popup after delay
             self._show_delayed_home_popup(log_x, log_y, log_z, is_magic_numbers=False)
 
@@ -3121,16 +3126,17 @@ class LiquidHandlerApp:
         Shows a delayed popup asking user to home the machine.
         Implements 5-second delay to allow hardware to synchronize.
         """
+
         def show_popup():
             """This runs after the 5-second delay"""
             # Get fresh live coordinates before showing popup
             live_x, live_y, live_z = self._get_live_coordinates(timeout=2.0)
-            
+
             # Check if coordinates are now valid - if so, don't show popup
             if self._is_valid_coordinates(live_x, live_y, live_z):
                 self.log_line("[STARTUP] Coordinates now valid, skipping home popup.")
                 return
-            
+
             # Show the popup with option to home
             if is_magic_numbers:
                 response = messagebox.askyesno(
@@ -3149,10 +3155,10 @@ class LiquidHandlerApp:
                     f"Machine may not be homed.\n\n"
                     f"Do you want to HOME ALL now?"
                 )
-            
+
             if response:
                 self.send_home("All")
-        
+
         # Schedule popup after 5 seconds (5000ms)
         self.root.after(5000, show_popup)
         self.log_line("[STARTUP] Waiting 5 seconds for hardware sync before showing home prompt...")
@@ -3187,8 +3193,8 @@ class LiquidHandlerApp:
     def _poll_position_loop(self):
         time_since_last_cmd = time.time() - self.last_action_time
         should_poll = (
-                not self.is_sequence_running and
-                time_since_last_cmd > IDLE_TIMEOUT_BEFORE_POLL
+            not self.is_sequence_running and
+            time_since_last_cmd > IDLE_TIMEOUT_BEFORE_POLL
         )
         if self.ser and self.ser.is_open and should_poll:
             if self.ok_event.is_set() or self.rx_queue.empty():
@@ -3402,14 +3408,15 @@ class LiquidHandlerApp:
             return abs_x, abs_y, abs_z
         return abs_x, abs_y
 
-    def _get_interpolated_coords(self, col_idx, row_idx, num_cols, num_rows, start_x, start_y, end_x, end_y, orientation="horizontal"):
+    def _get_interpolated_coords(self, col_idx, row_idx, num_cols, num_rows, start_x, start_y, end_x, end_y,
+                                 orientation="horizontal"):
         """
         Calculate interpolated coordinates for a well position.
-        
+
         For horizontal orientation:
         - X axis corresponds to columns (1-12)
         - Y axis corresponds to rows (A-H)
-        
+
         For vertical orientation (rotated 90 degrees):
         - X axis corresponds to rows (A-H)
         - Y axis corresponds to columns (1-12)
@@ -3448,7 +3455,8 @@ class LiquidHandlerApp:
         suffix = parts[1]
         if combo_str.startswith("96Well"): return "PLATE", combo_str.replace("96Well ", "")
         if combo_str.startswith("96 Well Plate Left"): return "PLATE_LEFT", combo_str.replace("96 Well Plate Left ", "")
-        if combo_str.startswith("96 Well Plate Right"): return "PLATE_RIGHT", combo_str.replace("96 Well Plate Right ", "")
+        if combo_str.startswith("96 Well Plate Right"): return "PLATE_RIGHT", combo_str.replace("96 Well Plate Right ",
+                                                                                                "")
         if combo_str.startswith("Filter Eppi"): return "FILTER_EPPI", combo_str.replace("Filter Eppi ", "")
         if combo_str.startswith("Eppi"): return "EPPI", combo_str.replace("Eppi ", "")
         if combo_str.startswith("HPLC Insert"): return "HPLC_INSERT", combo_str.replace("HPLC Insert ", "")
@@ -3570,7 +3578,8 @@ class LiquidHandlerApp:
         row_idx = self.plate_rows.index(row_char)
         col_idx = col_num - 1
         orientation = PLATE_LEFT_CONFIG.get("ORIENTATION", "horizontal")
-        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_LEFT_CONFIG["A1_X"], PLATE_LEFT_CONFIG["A1_Y"],
+        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_LEFT_CONFIG["A1_X"],
+                                               PLATE_LEFT_CONFIG["A1_Y"],
                                                PLATE_LEFT_CONFIG["H12_X"], PLATE_LEFT_CONFIG["H12_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
@@ -3580,7 +3589,8 @@ class LiquidHandlerApp:
         row_idx = self.plate_rows.index(row_char)
         col_idx = col_num - 1
         orientation = PLATE_RIGHT_CONFIG.get("ORIENTATION", "horizontal")
-        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_RIGHT_CONFIG["A1_X"], PLATE_RIGHT_CONFIG["A1_Y"],
+        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 12, 8, PLATE_RIGHT_CONFIG["A1_X"],
+                                               PLATE_RIGHT_CONFIG["A1_Y"],
                                                PLATE_RIGHT_CONFIG["H12_X"], PLATE_RIGHT_CONFIG["H12_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
@@ -3919,8 +3929,8 @@ class LiquidHandlerApp:
         global_safe_z = self.resolve_coords(0, 0, GLOBAL_SAFE_Z_OFFSET)[2]
         current_mod = start_module if start_module is not None else self.last_known_module
         use_optimized_z = (
-                current_mod in SMALL_VIAL_MODULES and
-                target_module in SMALL_VIAL_MODULES
+            current_mod in SMALL_VIAL_MODULES and
+            target_module in SMALL_VIAL_MODULES
         )
         if use_optimized_z:
             travel_z = self.resolve_coords(0, 0, _4ML_RACK_CONFIG["Z_SAFE"])[2]
@@ -4022,13 +4032,13 @@ class LiquidHandlerApp:
         return [(k, groups[k]) for k in order]
 
     def _perform_batch_wash_distribution(
-            self,
-            wash_src_str: str,
-            tasks_for_this_wash: list,
-            e_gap_pos: float,
-            air_gap_ul: float,
-            max_liquid_ul: float = 800.0,
-            start_module: str | None = None
+        self,
+        wash_src_str: str,
+        tasks_for_this_wash: list,
+        e_gap_pos: float,
+        air_gap_ul: float,
+        max_liquid_ul: float = 800.0,
+        start_module: str | None = None
     ):
         if not wash_src_str:
             self.log_line("[WASH-BATCH] ERROR: wash_src_str is empty.")
@@ -4116,13 +4126,13 @@ class LiquidHandlerApp:
         return current_mod
 
     def _perform_wash_mix_and_transfer(
-            self,
-            source_str: str,
-            dest_str: str,
-            wash_vol_ul: float,
-            e_gap_pos: float,
-            air_gap_ul: float,
-            start_module: str | None = None
+        self,
+        source_str: str,
+        dest_str: str,
+        wash_vol_ul: float,
+        e_gap_pos: float,
+        air_gap_ul: float,
+        start_module: str | None = None
     ):
         s_mod, s_x, s_y, s_safe_z, s_asp_z, _ = self.get_coords_from_combo(source_str)
         d_mod, d_x, d_y, d_safe_z, _, d_disp_z = self.get_coords_from_combo(dest_str)
@@ -4713,7 +4723,8 @@ class LiquidHandlerApp:
                             dest_module = "4ML"
                         else:
                             # Falcon tube destination - strip "Falcon " prefix if present
-                            falcon_pos = dest_falcon.replace("Falcon ", "") if dest_falcon.startswith("Falcon ") else dest_falcon
+                            falcon_pos = dest_falcon.replace("Falcon ", "") if dest_falcon.startswith(
+                                "Falcon ") else dest_falcon
                             dx, dy = self.get_falcon_coordinates(falcon_pos)
                             dest_safe_z = falcon_safe_z
                             dest_disp_z = falcon_disp_z
@@ -5115,21 +5126,23 @@ class LiquidHandlerApp:
         jog_win.geometry("450x420")
         jog_win.grab_set()
         ttk.Label(jog_win, text="Jog head until tip touches pin.", font=("Arial", 10, "bold")).pack(pady=10)
-        
+
         # Precision selection frame
         precision_frame = ttk.LabelFrame(jog_win, text="Step Precision", padding=10)
         precision_frame.pack(pady=5)
         self.calib_step_var = tk.DoubleVar(value=0.1)  # Default to 0.1mm
-        ttk.Radiobutton(precision_frame, text="0.1 mm", variable=self.calib_step_var, value=0.1).pack(side="left", padx=10)
-        ttk.Radiobutton(precision_frame, text="1.0 mm", variable=self.calib_step_var, value=1.0).pack(side="left", padx=10)
-        
+        ttk.Radiobutton(precision_frame, text="0.1 mm", variable=self.calib_step_var, value=0.1).pack(side="left",
+                                                                                                      padx=10)
+        ttk.Radiobutton(precision_frame, text="1.0 mm", variable=self.calib_step_var, value=1.0).pack(side="left",
+                                                                                                      padx=10)
+
         # Current precision display
         self.calib_precision_label = ttk.Label(jog_win, text="Current Step: 0.1 mm", font=("Arial", 9))
         self.calib_precision_label.pack(pady=5)
-        
+
         def update_precision_label():
             self.calib_precision_label.config(text=f"Current Step: {self.calib_step_var.get()} mm")
-        
+
         ctrl_frame = ttk.Frame(jog_win)
         ctrl_frame.pack(pady=10)
         original_step = self.step_size_var.get()
@@ -5148,18 +5161,21 @@ class LiquidHandlerApp:
         jog_win.protocol("WM_DELETE_WINDOW", close_and_restore)
         btn_w = 6
         ttk.Button(ctrl_frame, text="Y+", width=btn_w, command=lambda: jog_with_precision("Y", 1)).grid(row=0, column=1,
-                                                                                                   pady=5)
-        ttk.Button(ctrl_frame, text="Y-", width=btn_w, command=lambda: jog_with_precision("Y", -1)).grid(row=2, column=1,
-                                                                                                    pady=5)
-        ttk.Button(ctrl_frame, text="X-", width=btn_w, command=lambda: jog_with_precision("X", -1)).grid(row=1, column=0,
-                                                                                                    padx=5)
+                                                                                                        pady=5)
+        ttk.Button(ctrl_frame, text="Y-", width=btn_w, command=lambda: jog_with_precision("Y", -1)).grid(row=2,
+                                                                                                         column=1,
+                                                                                                         pady=5)
+        ttk.Button(ctrl_frame, text="X-", width=btn_w, command=lambda: jog_with_precision("X", -1)).grid(row=1,
+                                                                                                         column=0,
+                                                                                                         padx=5)
         ttk.Button(ctrl_frame, text="X+", width=btn_w, command=lambda: jog_with_precision("X", 1)).grid(row=1, column=2,
-                                                                                                   padx=5)
-        ttk.Button(ctrl_frame, text="Z+ (Up)", width=btn_w, command=lambda: jog_with_precision("Z", 1)).grid(row=0, column=4,
-                                                                                                            padx=20)
-        ttk.Button(ctrl_frame, text="Z- (Dn)", width=btn_w, command=lambda: jog_with_precision("Z", -1)).grid(row=2,
+                                                                                                        padx=5)
+        ttk.Button(ctrl_frame, text="Z+ (Up)", width=btn_w, command=lambda: jog_with_precision("Z", 1)).grid(row=0,
                                                                                                              column=4,
                                                                                                              padx=20)
+        ttk.Button(ctrl_frame, text="Z- (Dn)", width=btn_w, command=lambda: jog_with_precision("Z", -1)).grid(row=2,
+                                                                                                              column=4,
+                                                                                                              padx=20)
         bot_frame = ttk.Frame(jog_win)
         bot_frame.pack(side="bottom", fill="x", pady=10, padx=10)
         ttk.Button(bot_frame, text="Revert to Default",
@@ -5173,7 +5189,7 @@ class LiquidHandlerApp:
         rounded_x = round(self.current_x, 1)
         rounded_y = round(self.current_y, 1)
         rounded_z = round(self.current_z, 1)
-        
+
         # Load existing full config from file
         try:
             if os.path.exists(self.config_file):
@@ -5306,16 +5322,16 @@ class LiquidHandlerApp:
         """Move to a specific position in the current module and show calibration dialog"""
         module_name = self.current_calibration_module
         selected_z_height = self.calibration_z_height_var.get()
-        
+
         # Store the selected Z height key for saving later
         self.current_calibration_z_height = selected_z_height
-        
+
         # Get the appropriate config based on module type
         module_config = self._get_module_config(module_name)
         if not module_config:
             messagebox.showerror("Error", f"Unknown module: {module_name}")
             return
-        
+
         # Get coordinates based on module type
         try:
             if module_name == "tip rack":
@@ -5357,14 +5373,14 @@ class LiquidHandlerApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to get coordinates for {position}: {e}")
             return
-        
+
         # Get the selected Z height value from config
         try:
             calib_z = self.resolve_coords(0, 0, module_config[selected_z_height])[2]
         except KeyError:
             # Fallback to Z_CALIBRATE if selected height not found
             calib_z = self.resolve_coords(0, 0, module_config.get("Z_CALIBRATE", module_config["Z_DISPENSE"]))[2]
-        
+
         # Store current position being calibrated
         self.current_calibration_position = position
         self.current_calibration_coords = (x, y, calib_z)
@@ -5402,19 +5418,19 @@ class LiquidHandlerApp:
                   font=("Arial", 10)).pack(pady=10)
         ttk.Label(popup, text=f"Step {step + 1} of {total_positions}",
                   font=("Arial", 9, "italic")).pack(pady=5)
-        
+
         # Z-height selection in popup
         z_height_frame = ttk.Frame(popup)
         z_height_frame.pack(pady=10)
         ttk.Label(z_height_frame, text="Z Height to Calibrate:").pack(side="left", padx=(0, 5))
-        
+
         # Get available Z heights for this module
         z_heights = self.module_z_heights.get(module_name, ["Z_CALIBRATE"])
         popup_z_height_var = tk.StringVar(value=self.current_calibration_z_height)
         z_height_combo = ttk.Combobox(z_height_frame, textvariable=popup_z_height_var,
-                                       values=z_heights, width=15, state="readonly")
+                                      values=z_heights, width=15, state="readonly")
         z_height_combo.pack(side="left", padx=5)
-        
+
         ttk.Label(popup, text="Is the position correct?", font=("Arial", 10)).pack(pady=5)
 
         btn_frame = ttk.Frame(popup)
@@ -5445,18 +5461,20 @@ class LiquidHandlerApp:
 
         ttk.Label(jog_win, text=f"Jog head to correct {module_name} {position} position.",
                   font=("Arial", 10, "bold")).pack(pady=10)
-        
+
         # Precision selection frame
         precision_frame = ttk.LabelFrame(jog_win, text="Step Precision", padding=10)
         precision_frame.pack(pady=5)
         self.calib_step_var = tk.DoubleVar(value=0.1)  # Default to 0.1mm
-        ttk.Radiobutton(precision_frame, text="0.1 mm", variable=self.calib_step_var, value=0.1).pack(side="left", padx=10)
-        ttk.Radiobutton(precision_frame, text="1.0 mm", variable=self.calib_step_var, value=1.0).pack(side="left", padx=10)
-        
+        ttk.Radiobutton(precision_frame, text="0.1 mm", variable=self.calib_step_var, value=0.1).pack(side="left",
+                                                                                                      padx=10)
+        ttk.Radiobutton(precision_frame, text="1.0 mm", variable=self.calib_step_var, value=1.0).pack(side="left",
+                                                                                                      padx=10)
+
         # Current precision display
         self.calib_precision_label = ttk.Label(jog_win, text="Current Step: 0.1 mm", font=("Arial", 9))
         self.calib_precision_label.pack(pady=5)
-        
+
         def update_precision_label():
             self.calib_precision_label.config(text=f"Current Step: {self.calib_step_var.get()} mm")
 
@@ -5482,18 +5500,21 @@ class LiquidHandlerApp:
         # Jog buttons
         btn_w = 6
         ttk.Button(ctrl_frame, text="Y+", width=btn_w, command=lambda: jog_with_precision("Y", 1)).grid(row=0, column=1,
-                                                                                                   pady=5)
-        ttk.Button(ctrl_frame, text="Y-", width=btn_w, command=lambda: jog_with_precision("Y", -1)).grid(row=2, column=1,
-                                                                                                    pady=5)
-        ttk.Button(ctrl_frame, text="X-", width=btn_w, command=lambda: jog_with_precision("X", -1)).grid(row=1, column=0,
-                                                                                                    padx=5)
+                                                                                                        pady=5)
+        ttk.Button(ctrl_frame, text="Y-", width=btn_w, command=lambda: jog_with_precision("Y", -1)).grid(row=2,
+                                                                                                         column=1,
+                                                                                                         pady=5)
+        ttk.Button(ctrl_frame, text="X-", width=btn_w, command=lambda: jog_with_precision("X", -1)).grid(row=1,
+                                                                                                         column=0,
+                                                                                                         padx=5)
         ttk.Button(ctrl_frame, text="X+", width=btn_w, command=lambda: jog_with_precision("X", 1)).grid(row=1, column=2,
-                                                                                                   padx=5)
-        ttk.Button(ctrl_frame, text="Z+ (Up)", width=btn_w, command=lambda: jog_with_precision("Z", 1)).grid(row=0, column=4,
-                                                                                                            padx=20)
-        ttk.Button(ctrl_frame, text="Z- (Dn)", width=btn_w, command=lambda: jog_with_precision("Z", -1)).grid(row=2,
+                                                                                                        padx=5)
+        ttk.Button(ctrl_frame, text="Z+ (Up)", width=btn_w, command=lambda: jog_with_precision("Z", 1)).grid(row=0,
                                                                                                              column=4,
                                                                                                              padx=20)
+        ttk.Button(ctrl_frame, text="Z- (Dn)", width=btn_w, command=lambda: jog_with_precision("Z", -1)).grid(row=2,
+                                                                                                              column=4,
+                                                                                                              padx=20)
 
         # Bottom buttons
         bot_frame = ttk.Frame(jog_win)
@@ -5520,7 +5541,7 @@ class LiquidHandlerApp:
         rel_x = new_x - CALIBRATION_PIN_CONFIG["PIN_X"]
         rel_y = new_y - CALIBRATION_PIN_CONFIG["PIN_Y"]
         rel_z = new_z - CALIBRATION_PIN_CONFIG["PIN_Z"]
-        
+
         # Round values to 0.1 mm precision
         rel_x = round(rel_x, 1)
         rel_y = round(rel_y, 1)

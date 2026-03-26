@@ -1273,6 +1273,7 @@ class LiquidHandlerApp:
             "diluent": "Wash A",
             "plate_col": "1",
             "final_conc": "",
+            "bottom_offset": "",
         }
         for i, row_vars in enumerate(self.dilution_rows):
             spec = preset_rows[i] if i < len(preset_rows) else {}
@@ -1285,6 +1286,7 @@ class LiquidHandlerApp:
             diluent = spec.get("diluent", defaults["diluent"])
             plate_col = self._preset_val_to_str(spec.get("plate_col", defaults["plate_col"]))
             final_conc = self._preset_val_to_str(spec.get("final_conc", defaults["final_conc"]))
+            bottom_offset = self._preset_val_to_str(spec.get("bottom_offset", defaults["bottom_offset"]))
 
             row_vars["execute"].set(execute)
             self._set_transfer_row_source(row_vars, src_mod, src_pos)
@@ -1292,6 +1294,7 @@ class LiquidHandlerApp:
             row_vars["diluent"].set(diluent)
             row_vars["plate_col"].set(plate_col)
             row_vars["final_conc"].set(final_conc)
+            row_vars["bottom_offset"].set(bottom_offset)
         try:
             if preset_name:
                 self.log_line(f"[UI] Dilution preset loaded: {preset_name}")
@@ -1301,63 +1304,63 @@ class LiquidHandlerApp:
     def load_dilution_preset_1(self):
         preset = [
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F1", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F2", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F3", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F4", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F5", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F6", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F7", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F8", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 1, "final_conc": 1.25},
+             "plate_col": 1, "final_conc": 1.25, "bottom_offset": ""},
         ]
         self._apply_dilution_preset(preset, preset_name="P1")
 
     def load_dilution_preset_2(self):
         preset = [
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F1", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F2", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F3", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F4", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F5", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F6", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F7", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F8", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 5, "final_conc": 1.25},
+             "plate_col": 5, "final_conc": 1.25, "bottom_offset": ""},
         ]
         self._apply_dilution_preset(preset, preset_name="P2")
 
     def load_dilution_preset_3(self):
         preset = [
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F1", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F2", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F3", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F4", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F5", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F6", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F7", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
             {"execute": False, "src_mod": "Screwcap Vial", "src_pos": "F8", "src_conc": "", "diluent": "Wash A",
-             "plate_col": 9, "final_conc": 1.25},
+             "plate_col": 9, "final_conc": 1.25, "bottom_offset": ""},
         ]
         self._apply_dilution_preset(preset, preset_name="P3")
 
@@ -1828,7 +1831,8 @@ class LiquidHandlerApp:
         cols = [
             ("Exec", 4), ("Line", 3), ("Source Mod", 12), ("Source Pos", 10),
             ("Conc (ug/mL)", 10), ("Diluent", 14),
-            ("Plate Col", 7), ("Final Conc", 10)
+            ("Plate Col", 7), ("Final Conc", 10),
+            ("Bottom Offset (mm)", 16)
         ]
 
         for c, (text, w) in enumerate(cols):
@@ -1857,6 +1861,7 @@ class LiquidHandlerApp:
                 "diluent": tk.StringVar(value="Wash A"),
                 "plate_col": tk.StringVar(value="1"),
                 "final_conc": tk.StringVar(value=""),
+                "bottom_offset": tk.StringVar(value=""),
             }
 
             r = i + 1
@@ -1900,6 +1905,11 @@ class LiquidHandlerApp:
                 table, textvariable=row_vars["final_conc"],
                 width=10, justify="center"
             ).grid(row=r, column=7, padx=2, pady=2)
+
+            ttk.Entry(
+                table, textvariable=row_vars["bottom_offset"],
+                width=16, justify="center"
+            ).grid(row=r, column=8, padx=2, pady=2)
 
             self.dilution_rows.append(row_vars)
 
@@ -2000,6 +2010,8 @@ class LiquidHandlerApp:
                 src_conc = float(row["src_conc"].get())
                 final_conc = float(row["final_conc"].get())
                 plate_col = int(row["plate_col"].get())
+                bottom_offset_val = row["bottom_offset"].get().strip()
+                bottom_offset_mm = float(bottom_offset_val) if bottom_offset_val else 0.0
             except (TypeError, ValueError):
                 self.log_line(f"[DILUTION] Skipping line {idx + 1}: invalid numeric input.")
                 continue
@@ -2039,6 +2051,7 @@ class LiquidHandlerApp:
                 "steps": steps,
                 "wells": well_names,
                 "plate_row": plate_row_char,
+                "bottom_offset_mm": bottom_offset_mm,
             })
 
         if not tasks:
@@ -2215,7 +2228,9 @@ class LiquidHandlerApp:
                     # for pipette under-delivery at low volumes (e.g. 80 uL -> 88 uL)
                     asp_vol = transfer_vol * 1.10 if transfer_vol < 100 else transfer_vol
                     e_loaded_pos = -1 * (air_gap_ul + asp_vol) * STEPS_PER_UL
-                    cmds.append(f"G0 Z{src_asp_z:.2f} F{JOG_SPEED_Z}")
+                    # Apply bottom offset only on source vial (step_idx == 0), not on plate wells
+                    asp_z = src_asp_z + task["bottom_offset_mm"] if step_idx == 0 else src_asp_z
+                    cmds.append(f"G0 Z{asp_z:.2f} F{JOG_SPEED_Z}")
                     cmds.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
                     cmds.append(f"G0 Z{src_safe_z:.2f} F{JOG_SPEED_Z}")
                     self._send_lines_with_ok(cmds)
