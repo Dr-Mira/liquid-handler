@@ -124,7 +124,7 @@ EJECT_STATION_CONFIG_DEFAULT = {
 # --- TIP RACK CONFIGURATION DEFAULT (Relative Offsets) ---
 TIP_RACK_CONFIG_DEFAULT = {
     "A1_X": 69.4, "A1_Y": 31.4,
-    "G5_X": 99.2, "G5_Y": -18.3,
+    "F4_X": 99.2, "F4_Y": -18.3,
     "Z_TRAVEL": 27.2,
     "Z_PICK": -64.2,
     "Z_CALIBRATE": -48.2,
@@ -366,8 +366,8 @@ class LiquidHandlerApp:
         self.load_calibration_config()
 
         # --- MODULE INVENTORY INITIALIZATION ---
-        self.tip_rows = ["A", "B", "C", "D", "E", "F", "G"]
-        self.tip_cols = ["1", "2", "3", "4", "5"]
+        self.tip_rows = ["A", "B", "C", "D", "E", "F"]
+        self.tip_cols = ["1", "2", "3", "4"]
         self.tip_inventory = {f"{r}{c}": True for r in self.tip_rows for c in self.tip_cols}
         self.tip_buttons = {}
 
@@ -3558,8 +3558,8 @@ class LiquidHandlerApp:
         row_idx = self.tip_rows.index(row_char)
         col_idx = col_num - 1
         orientation = TIP_RACK_CONFIG.get("ORIENTATION", "horizontal")
-        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 5, 7, TIP_RACK_CONFIG["A1_X"], TIP_RACK_CONFIG["A1_Y"],
-                                               TIP_RACK_CONFIG["G5_X"], TIP_RACK_CONFIG["G5_Y"], orientation)
+        rx, ry = self._get_interpolated_coords(col_idx, row_idx, 4, 6, TIP_RACK_CONFIG["A1_X"], TIP_RACK_CONFIG["A1_Y"],
+                                               TIP_RACK_CONFIG["F4_X"], TIP_RACK_CONFIG["F4_Y"], orientation)
         return self.resolve_coords(rx, ry)
 
     def get_well_coordinates(self, well_key):
@@ -5273,7 +5273,7 @@ class LiquidHandlerApp:
     def get_module_first_last_positions(self, module_name):
         """Get the first and last positions for a given module"""
         positions = {
-            "tip rack": ("A1", "G5"),
+            "tip rack": ("A1", "F4"),
             "96 well plate": ("A1", "H12"),
             "96 well plate left": ("A1", "H12"),
             "96 well plate right": ("A1", "H12"),
@@ -5553,9 +5553,9 @@ class LiquidHandlerApp:
                 if position == "A1":
                     full_config["TIP_RACK_CONFIG"]["A1_X"] = rel_x
                     full_config["TIP_RACK_CONFIG"]["A1_Y"] = rel_y
-                elif position == "G5":
-                    full_config["TIP_RACK_CONFIG"]["G5_X"] = rel_x
-                    full_config["TIP_RACK_CONFIG"]["G5_Y"] = rel_y
+                elif position == "F4":
+                    full_config["TIP_RACK_CONFIG"]["F4_X"] = rel_x
+                    full_config["TIP_RACK_CONFIG"]["F4_Y"] = rel_y
                 full_config["TIP_RACK_CONFIG"][self.current_calibration_z_height] = rel_z
 
             elif module_name == "96 well plate":
