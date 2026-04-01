@@ -86,6 +86,7 @@ SAFE_CENTER_X_OFFSET = CENTER_CONFIG["SAFE_CENTER_X_OFFSET"]
 SAFE_CENTER_Y_OFFSET = CENTER_CONFIG["SAFE_CENTER_Y_OFFSET"]
 
 # Parking
+
 PARK_HEAD_X = PARKING_CONFIG["PARK_HEAD_X"]
 PARK_HEAD_Y = PARKING_CONFIG["PARK_HEAD_Y"]
 PARK_HEAD_Z = PARKING_CONFIG["PARK_HEAD_Z"]
@@ -350,6 +351,11 @@ class LiquidHandlerApp:
         self.sequence_timer_remaining_s = 0.0
         self.sequence_timer_last_tick = None
         self.sequence_timer_motion_state = None
+        self.sequence_timer_precalculated = False
+
+        # --- DRY RUN / ESTIMATION STATE ---
+        self.is_dry_run = False
+        self.dry_run_commands = []
 
         # UI Variables
         self.port_var = tk.StringVar(value="/dev/ttyUSB0")
@@ -2312,7 +2318,9 @@ class LiquidHandlerApp:
             self.update_last_module("PARK")
             self.last_cmd_var.set("Idle")
 
-        self._start_sequence_timer("Dilution Sequence")
+        # --- PRE-CALCULATION ---
+        total_estimate = self._estimate_full_sequence(run_seq)
+        self._start_sequence_timer("Dilution Sequence", initial_estimate=total_estimate)
 
         def sequence_thread():
             try:
@@ -2663,10 +2671,11 @@ class LiquidHandlerApp:
             self._send_lines_with_ok(self._get_park_head_commands())
             self.update_last_module("PARK")
             self.last_cmd_var.set("Idle")
-            # Clear running flag
             self._dilution_aliquots_running = False
 
-        self._start_sequence_timer("Dilution + Aliquots Sequence")
+        # --- PRE-CALCULATION ---
+        total_estimate = self._estimate_full_sequence(run_seq)
+        self._start_sequence_timer("Dilution + Aliquots Sequence", initial_estimate=total_estimate)
 
         def sequence_thread():
             try:
@@ -3511,9 +3520,9 @@ class LiquidHandlerApp:
         self._update_sequence_timer_label()
         self.sequence_timer_after_id = self.root.after(250, self._sequence_timer_tick)
 
-    def _start_sequence_timer(self, sequence_name):
+    def _start_sequence_timer(self, sequence_name, initial_estimate=0.0):
         self.sequence_timer_active = True
-        self.sequence_timer_remaining_s = 0.0
+        self.sequence_timer_remaining_s = initial_estimate
         self.sequence_timer_last_tick = time.time()
         self.sequence_timer_motion_state = {
             "X": float(self.current_x),
@@ -3525,6 +3534,7 @@ class LiquidHandlerApp:
         self._open_sequence_timer_popup()
         if self.sequence_timer_name_var is not None:
             self.sequence_timer_name_var.set(sequence_name)
+        self.sequence_timer_precalculated = (initial_estimate > 0)
 
     def _add_sequence_timer_estimate(self, estimated_seconds):
         if not self.sequence_timer_active:
@@ -3534,6 +3544,72 @@ class LiquidHandlerApp:
 
         self.sequence_timer_remaining_s += estimated_seconds
         self.root.after(0, self._update_sequence_timer_label)
+
+    def _estimate_full_sequence(self, sequence_func):
+        """Runs sequence_func in dry-run mode to collect all G-code and estimate duration."""
+        # 1. Backup state
+        original_inventory = self.tip_inventory.copy()
+        original_module = self.last_known_module
+
+        # Backup timer motion state
+        original_timer_state = None
+        if self.sequence_timer_motion_state:
+            original_timer_state = self.sequence_timer_motion_state.copy()
+
+        # 2. Setup dry run
+        self.is_dry_run = True
+        self.dry_run_commands = []
+
+        # Temporarily initialize timer motion state for calculation from current hardware position
+        self.sequence_timer_motion_state = {
+            "X": float(self.current_x),
+            "Y": float(self.current_y),
+            "Z": float(self.current_z),
+            "E": None,
+        }
+
+        # 3. Suppress logging, UI updates and messageboxes during estimation
+        original_log = self.log_line
+        self.log_line = lambda *args, **kwargs: None
+        
+        # Suppress messageboxes to avoid blocking the UI thread during pre-calculation
+        original_showerror = messagebox.showerror
+        original_showwarning = messagebox.showwarning
+        original_showinfo = messagebox.showinfo
+        messagebox.showerror = lambda *args, **kwargs: None
+        messagebox.showwarning = lambda *args, **kwargs: None
+        messagebox.showinfo = lambda *args, **kwargs: None
+
+        try:
+            sequence_func()
+        except Exception as e:
+            # We use print here as log_line is suppressed
+            print(f"[TIMER] Estimation dry-run encountered an issue: {e}")
+        finally:
+            # 4. Restore state
+            messagebox.showerror = original_showerror
+            messagebox.showwarning = original_showwarning
+            messagebox.showinfo = original_showinfo
+            self.tip_inventory = original_inventory
+            self.last_known_module = original_module
+            self.log_line = original_log
+            self.is_dry_run = False
+
+            # Reset motion state again to start from current position for the final calculation
+            self.sequence_timer_motion_state = {
+                "X": float(self.current_x),
+                "Y": float(self.current_y),
+                "Z": float(self.current_z),
+                "E": None,
+            }
+            # Calculate total time based on collected commands
+            total_s = self._estimate_gcode_duration_seconds(self.dry_run_commands)
+
+            # Restore original timer state if it existed (though it probably shouldn't yet)
+            if original_timer_state:
+                self.sequence_timer_motion_state = original_timer_state
+
+        return total_s
 
     def _stop_sequence_timer(self):
         self.sequence_timer_active = False
@@ -3562,7 +3638,11 @@ class LiquidHandlerApp:
     def _send_lines_with_ok(self, lines):
         lines = list(lines)
 
-        if self.sequence_timer_active:
+        if getattr(self, "is_dry_run", False):
+            self.dry_run_commands.extend(lines)
+            return
+
+        if self.sequence_timer_active and not self.sequence_timer_precalculated:
             estimate_s = self._estimate_gcode_duration_seconds(lines)
             self._add_sequence_timer_estimate(estimate_s)
 
@@ -4606,7 +4686,9 @@ class LiquidHandlerApp:
             self.update_last_module("PARK")
             self.last_cmd_var.set("Idle")
 
-        self._start_sequence_timer("Transfer Sequence")
+        # --- PRE-CALCULATION ---
+        total_estimate = self._estimate_full_sequence(run_seq)
+        self._start_sequence_timer("Transfer Sequence", initial_estimate=total_estimate)
 
         def sequence_thread():
             try:
@@ -5081,7 +5163,9 @@ class LiquidHandlerApp:
             self.update_last_module("PARK")
             self.last_cmd_var.set("Idle")
 
-        self._start_sequence_timer("Pooling Sequence")
+        # --- PRE-CALCULATION ---
+        total_estimate = self._estimate_full_sequence(run_seq)
+        self._start_sequence_timer("Pooling Sequence", initial_estimate=total_estimate)
 
         def sequence_thread():
             try:
@@ -5247,7 +5331,9 @@ class LiquidHandlerApp:
             self.update_last_module("PARK")
             self.last_cmd_var.set("Idle")
 
-        self._start_sequence_timer("Aliquots Sequence")
+        # --- PRE-CALCULATION ---
+        total_estimate = self._estimate_full_sequence(run_seq)
+        self._start_sequence_timer("Aliquots Sequence", initial_estimate=total_estimate)
 
         def sequence_thread():
             try:
