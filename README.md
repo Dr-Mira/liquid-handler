@@ -3,7 +3,7 @@
 A DIY automated liquid handling system built from a Creality Ender 3 V3 SE 3D printer and Ependorf 1 mL pipette. 
 Robot is controlled via custom Python GUI, that acts as a G-code graphical interface.
 
-![Liquid Handler Demo](assets/liquid_handler_matrix.mp4) <!-- Add your demo video/GIF here -->
+![Liquid Handler Demo](assets/liquid_handler_matrix.gif) <!-- Add your demo video/GIF here -->
 
 ## Overview
 
