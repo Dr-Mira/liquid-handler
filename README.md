@@ -1,4 +1,4 @@
-# Mira Liquid Handler
+# DIY Liquid Handler
 
 A DIY automated liquid handling system built from a Creality Ender 3 V3 SE 3D printer and Ependorf 1 mL pipette. 
 Robot is controlled via custom Python GUI, that acts as a G-code graphical interface.
