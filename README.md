@@ -3,7 +3,7 @@
 A DIY automated liquid handling system built from a Creality Ender 3 V3 SE 3D printer and Ependorf 1 mL pipette. 
 Robot is controlled via custom Python GUI, that acts as a G-code graphical interface.
 
-![Liquid Handler Demo](docs/demo.gif) <!-- Add your demo video/GIF here -->
+![Liquid Handler Demo](assets/liquid_handler_matrix.mp4) <!-- Add your demo video/GIF here -->
 
 ## Overview
 
@@ -32,7 +32,7 @@ This project transforms a standard FDM 3D printer into a precision liquid handli
 
 ### Supported Labware Modules
 
-- **Vials** - 96-well plates, 50 and 15 mL Falcon tubes, 4 mL vials, 1.5 mL HPLC vials, Eppendorf tubes, PCR vials
+- **Vials** - Up to 3x96-well plates, 50 and 15 mL Falcon tubes, 4 mL vials, 1.5 mL HPLC vials, Eppendorf tubes, PCR vials
 - **Wash Station** - 2-position cleaning/waste station
 - **Tip Rack** - 7×5 grid (35 positions) for 1000 µL pipette tips
 - **Tip Eject Station** - Tip disposal area
@@ -65,7 +65,6 @@ This project transforms a standard FDM 3D printer into a precision liquid handli
 
 - **No plate reader integration** - Cannot read absorbance/fluorescence
 - **No heated/cooled positions** - No temperature control for reactions
-- **No shaking/mixing** - Mixing via pipette only
 - **No barcode scanning** - Samples must be tracked manually
 - **No cloud connectivity** - Local operation only
 
@@ -221,12 +220,6 @@ liquid-handler/
 
 ---
 
-## Version History
-
-See `stable/` directory for previous versions. Current stable version is tracked in `main.py`.
-
----
-
 ## License
 
 MIT License - Feel free to use, modify, and distribute. Attribution appreciated.
@@ -238,18 +231,6 @@ MIT License - Feel free to use, modify, and distribute. Attribution appreciated.
 - Built using the Marlin firmware project
 - Inspired by the open-source lab automation community
 - Thanks to the 3D printing community for hardware hacks
-
----
-
-## Demo & Media
-
-<!-- Add your demo video, screenshots, or photos here -->
-
-**[Watch Demo Video](your-video-link-here)**
-
-![Setup Photo](docs/setup.jpg) <!-- Add your setup photo here -->
-
-![GUI Screenshot](docs/gui.png) <!-- Add GUI screenshot here -->
 
 ---
 
