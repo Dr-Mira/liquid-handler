@@ -6395,7 +6395,8 @@ class LiquidHandlerApp:
         e_gap_pos = -1 * air_gap_ul * STEPS_PER_UL
         e_blowout_pos = -1 * 100.0 * STEPS_PER_UL
 
-        wash_mod, wash_x, wash_y, wash_safe_z, wash_asp_z, _ = self.get_coords_from_combo(source_str)
+        wash_mod, wash_x, wash_y, wash_safe_z, _, wash_disp_z = self.get_coords_from_combo(source_str)
+        wash_draw_z = wash_disp_z
 
         def run_seq():
             self.log_command("[ISO TEST] Starting Wash A ISO validation distribution sequence...")
@@ -6438,7 +6439,7 @@ class LiquidHandlerApp:
                             start_module=current_sim_module
                         )
                     )
-                    cmds_prewet.append(f"G0 Z{wash_asp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_prewet.append(f"G0 Z{wash_draw_z:.2f} F{JOG_SPEED_Z}")
                     cmds_prewet.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
                     cmds_prewet.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
                     cmds_prewet.append(f"G0 Z{wash_safe_z:.2f} F{JOG_SPEED_Z}")
@@ -6470,7 +6471,7 @@ class LiquidHandlerApp:
                             start_module=current_sim_module
                         )
                     )
-                    cmds_asp.append(f"G0 Z{wash_asp_z:.2f} F{JOG_SPEED_Z}")
+                    cmds_asp.append(f"G0 Z{wash_draw_z:.2f} F{JOG_SPEED_Z}")
                     cmds_asp.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
                     cmds_asp.append(f"G0 Z{wash_safe_z:.2f} F{JOG_SPEED_Z}")
                     self._send_lines_with_ok(cmds_asp)
@@ -6620,6 +6621,7 @@ def main():
         style = ttk.Style()
         style.theme_use('clam')
     except:
+
         pass
     app = LiquidHandlerApp(root)
     root.protocol("WM_DELETE_WINDOW", lambda: (app.disconnect(), root.destroy()))
