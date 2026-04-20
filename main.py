@@ -6388,6 +6388,15 @@ class LiquidHandlerApp:
 
         source_str = "Wash A"
         phase_volumes_ul = [80.0, 400.0, 800.0]
+        # ISO-test-only Boulder altitude compensation (linear fit from ISO gravimetric data).
+        # Commanded aspiration volume is adjusted so delivered volume is close to target:
+        #   command_ul = (target_ul + 6.11) / 0.9887
+        iso_cmd_slope = 0.9887
+        iso_cmd_offset_ul = 6.11
+
+        def iso_command_volume_ul(target_ul):
+            return (target_ul + iso_cmd_offset_ul) / iso_cmd_slope
+
         prewet_cycles = 5
         transfers_per_phase = 10
 
@@ -6411,26 +6420,34 @@ class LiquidHandlerApp:
             destination_idx = 0
 
             for phase_idx, vol_ul in enumerate(phase_volumes_ul, start=1):
+                cmd_vol_ul = iso_command_volume_ul(vol_ul)
                 tip_key = self._find_next_available_tip()
                 if not tip_key:
                     messagebox.showerror("No Tips", f"Ran out of tips before ISO phase {phase_idx}.")
                     self.last_cmd_var.set("Idle")
                     return
 
-                self.log_line(f"[ISO TEST] Phase {phase_idx}: Picking Tip {tip_key} for {vol_ul:.0f}uL...")
+                self.log_line(
+                    f"[ISO TEST] Phase {phase_idx}: Picking Tip {tip_key} for target {vol_ul:.0f}uL "
+                    f"(commanded {cmd_vol_ul:.1f}uL)..."
+                )
                 self._send_lines_with_ok(self._get_pick_tip_commands(tip_key, start_module=current_sim_module))
                 self.tip_inventory[tip_key] = False
                 self.root.after(0, self.update_tip_grid_colors)
                 self.update_last_module("TIPS")
                 current_sim_module = "TIPS"
 
-                e_loaded_pos = -1 * (air_gap_ul + vol_ul) * STEPS_PER_UL
+                e_loaded_pos = -1 * (air_gap_ul + cmd_vol_ul) * STEPS_PER_UL
 
                 # Pre-wet tip in Wash A using current phase target volume
-                self.log_line(f"[ISO TEST] Phase {phase_idx}: Pre-wet {prewet_cycles}x at {vol_ul:.0f}uL in {source_str}.")
+                self.log_line(
+                    f"[ISO TEST] Phase {phase_idx}: Pre-wet {prewet_cycles}x for target {vol_ul:.0f}uL "
+                    f"(commanded {cmd_vol_ul:.1f}uL) in {source_str}."
+                )
                 for cycle in range(prewet_cycles):
                     self.last_cmd_var.set(
-                        f"ISO Phase {phase_idx}: Pre-wet {cycle + 1}/{prewet_cycles} ({vol_ul:.0f}uL)"
+                        f"ISO Phase {phase_idx}: Pre-wet {cycle + 1}/{prewet_cycles} "
+                        f"(target {vol_ul:.0f}uL, cmd {cmd_vol_ul:.1f}uL)"
                     )
                     cmds_prewet = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
                     cmds_prewet.extend(
@@ -6460,7 +6477,8 @@ class LiquidHandlerApp:
                     destination_idx += 1
 
                     self.last_cmd_var.set(
-                        f"ISO Phase {phase_idx}: {vol_ul:.0f}uL -> {dest_str} ({transfer_idx + 1}/10)"
+                        f"ISO Phase {phase_idx}: {vol_ul:.0f}uL target (cmd {cmd_vol_ul:.1f}uL) "
+                        f"-> {dest_str} ({transfer_idx + 1}/10)"
                     )
 
                     # Aspirate from Wash A at wash aspirate Z
@@ -6500,7 +6518,8 @@ class LiquidHandlerApp:
                     self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
 
                     self.log_line(
-                        f"[ISO TEST] Phase {phase_idx}: Dispensed {vol_ul:.0f}uL to {dest_str} "
+                        f"[ISO TEST] Phase {phase_idx}: Dispensed target {vol_ul:.0f}uL "
+                        f"(commanded {cmd_vol_ul:.1f}uL) to {dest_str} "
                         f"(global vial {destination_idx}/30)."
                     )
 
@@ -6618,6 +6637,7 @@ class LiquidHandlerApp:
 def main():
     root = tk.Tk()
     try:
+
         style = ttk.Style()
         style.theme_use('clam')
     except:
