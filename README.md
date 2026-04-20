@@ -1,20 +1,25 @@
 # DIY Liquid Handler
 
 A DIY automated liquid handling system built from a Creality Ender 3 V3 SE 3D printer and Ependorf 1 mL pipette. 
-Robot is controlled via custom Python GUI, that acts as a G-code graphical interface.
+Robot is controlled via a custom Python script that acts as a G-code graphical interface.
 
-![Liquid Handler Demo](assets/liquid_handler_matrix.gif) <!-- Add your demo video/GIF here -->
+<table>
+  <tr>
+    <td width="52%" valign="top" align="center">
+      <img src="assets/liquid_handler_matrix.gif" alt="Liquid Handler Demo" width="60%" />
+    </td>
+    <td width="70%" valign="top" align="center">
+      <img src="assets/pic_init.png" alt="Init Screen" width="100%" /><br/>
+      <img src="assets/pic_calibration.png" alt="Calibration Screen" width="100%" />
+    </td>
+  </tr>
+</table>
 
 ## Overview
 
-This project transforms a standard FDM 3D printer into a precision liquid handling robot capable of performing common laboratory workflows including liquid transfers, dilutions, pooling, and aliquoting. The system uses the printer's XYZ motion system for positioning and the extruder stepper motor to drive a pipette mechanism.
-
-### Why Build This?
-
-- **Cost-effective**: Repurpose an inexpensive 3D printer instead of buying a $10k+ commercial liquid handler
-- **Customizable**: Open-source software allows you to modify protocols and add new functionality
-- **Compact**: Fits on a standard lab bench
-- **User-friendly**: GUI-based operation - no coding required to run protocols
+This project transforms an inexpensive FDM 3D printer into a precision liquid handling robot capable of performing 
+common laboratory workflows including liquid transfers, dilutions, pooling, and aliquoting. The system uses the 
+printer's XYZ motion system for positioning and the extruder stepper motor to drive a pipette mechanism.
 
 ---
 
@@ -78,23 +83,20 @@ This project transforms a standard FDM 3D printer into a precision liquid handli
 
 ## Hardware Requirements
 
-### Required Components
+### Used Components
 
-| Component | Specification                             | Notes |
-|-----------|-------------------------------------------|-------|
-| 3D Printer | Marlin-compatible (Ender 3, CR-10, etc.)  | XY accuracy ±0.1mm minimum |
-| Controller Board | 32-bit recommended (SKR, Creality v4.2.7) | Better stepper resolution |
-| Pipette Mechanism | 100-1000 µL air displacement              | Modified manual pipette or custom build |
-| Pipette Tips | Universal 100-1000 µL tips                | Tip rack dimensions matter |
-| USB Cable | A to B or Micro-USB                       | For computer connection |
-| Power Supply | Printer's stock PSU                       | 24V or 12V depending on printer |
+| Component                    | Specification                                              | Notes                                                        | Price               |
+|------------------------------|------------------------------------------------------------|--------------------------------------------------------------|---------------------|
+| Kinetic 4 axis system        | Creality Ender 3 V3 SE 3D printer                          | Refubrished, second hand market                              | 100 USD             |
+| Controler                    | Raspberry Pi 5, 4 GB ram                                   | 40x40x5mm aluminium cooler                                   | 100 USD             |
+| USB Keyboard, Mouse, Display | Hosyond 7 Inch IPS LCD Touch Screen Display Panel 1024×600 | Resolution hardcooded in the python script                   | 50 USD              |
+| Analytical Pipette           | 100-1000 µL air displacement                               | 10 year old, freshly calibrated                              | 500 USD             |
+| Pipette Tips                 | Universal 100-1000 µL tips                                 | Standard 82 mm length                                        | 50 USD/1000 pieces  |
+| USB Cable                    | A to B or Micro-USB                                        | Make sure it supports serial com, some are only for charging | 10 USD              |
+| Hardware                     | M3X8, M3X6 screws and nuts                                 | ca. 20 each                                                  | ca. 10 USD          |
+| 3D printer to print parts    | Bambu P1S                                                  |                                                              | 600 USD             |
+| Filament to print parts      | Elegoo PLA+ rapid, 1 kg                                    | STL, and STEP files on MakerWord (free)                      | filament ca. 10 USD |
 
-### Mechanical Modifications
-
-1. **Pipette Mount**: Design or adapt a bracket to hold the pipette on the print head
-2. **E-axis Coupling**: Connect pipette plunger to extruder stepper via Bowden cable or direct drive
-3. **Bed Removal**: Remove heated bed; replace with flat deck for labware
-4. **Labware Holders**: 3D print or machine holders for each module type
 
 ---
 
@@ -134,7 +136,7 @@ M84 E S3     ; Disable E stepper after 3s idle
 
 ```bash
 # Clone or download this repository
-git clone https://github.com/yourusername/liquid-handler.git
+git clone https://github.com/Dr-Mira/liquid-handler.git
 cd liquid-handler
 
 # Install dependencies
@@ -152,7 +154,7 @@ python main.py
 1. **Connect** to your printer via USB (115200 baud default)
 2. **Home All** axes from the Init tab
 3. **Absolute Calibration**: Use the Calib. tab with the calibration pin
-4. **Module Calibration**: Calibrate each module's corner positions
+4. **Module Calibration**: Calibrate each module's first and last corner positions
 5. **Save Configuration**: Settings auto-save to `config.json`
 
 ---
@@ -176,33 +178,15 @@ All settings are stored in `config.json` and can be edited:
 
 ## Safety & Warnings
 
-### ⚠️ Critical Safety Information
-
 - **Never leave running unattended** - Always monitor operation
 - **Keep emergency stop accessible** - Know your printer's reset button location
 - **Verify clearances before homing** - Ensure no obstacles in XYZ path
 - **Use appropriate PPE** - Gloves, goggles when handling hazardous liquids
 - **Secure loose clothing/hair** - Can entangle in moving parts
-
-### Operational Warnings
-
 - **Always home after power cycle** - Position is lost when power is removed
 - **Check tip attachment** - Loose tips cause volume errors and spills
 - **Mind the Z-height** - Wrong Z calibration crashes pipette into labware
-- **Watch for bubbles** - Affects accuracy; pre-wet tips for viscous liquids
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| "Port not found" | Check USB connection; try different cable/port |
-| "No response from printer" | Verify baud rate (115200 default); check printer is on |
-| Tips not picking up | Increase Z-pick depth in calibration; check tip fit |
-| Volume inaccurate | Recalibrate `STEPS_PER_UL`; check for air bubbles |
-| Serial timeout | Reduce polling interval in config; check cable shielding |
-| Lost position | Home all axes; check for missed steps |
+- **Watch for bubbles** - Affects accuracy; pre-wet tips for better accuracy
 
 ---
 
