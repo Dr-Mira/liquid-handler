@@ -1,7 +1,9 @@
 # DIY Liquid Handler
 
-A DIY automated liquid handling system built from a Creality Ender 3 V3 SE 3D printer and Ependorf 1 mL pipette. 
-Robot is controlled via a custom Python script that acts as a G-code graphical interface.
+A DIY automated liquid handling system built from a Creality Ender 3 V3 SE 3D printer and Ependorf 1 mL pipette.
+The system uses the printer's XYZ motion system for positioning and the extruder stepper motor to drive a pipette mechanism.
+Robot is controlled via a custom Python script that acts as a G-code graphical interface. Robot capable of performing 
+common laboratory workflows including liquid transfers, dilutions, pooling, and aliquoting. 
 
 <table>
   <tr>
@@ -15,11 +17,22 @@ Robot is controlled via a custom Python script that acts as a G-code graphical i
   </tr>
 </table>
 
-## Overview
+---
 
-This project transforms an inexpensive FDM 3D printer into a precision liquid handling robot capable of performing 
-common laboratory workflows including liquid transfers, dilutions, pooling, and aliquoting. The system uses the 
-printer's XYZ motion system for positioning and the extruder stepper motor to drive a pipette mechanism.
+## Components I Used
+
+| Component                    | Specification                                              | Notes                                                        | Price (USD early 2026) |
+|------------------------------|------------------------------------------------------------|--------------------------------------------------------------|------------------------|
+| Kinetic 4 axis system        | Creality Ender 3 V3 SE 3D printer                          | Refubrished, second hand market                              | 100                    |
+| Controler                    | Raspberry Pi 5, 4 GB ram                                   | 40x40x5mm aluminium cooler                                   | 100                    |
+| USB Keyboard, Mouse, Display | Hosyond 7 Inch IPS LCD Touch Screen Display Panel 1024×600 | Resolution hardcoded in script                               | 50                     |
+| Analytical Pipette           | 100-1000 uL, Eppendorf                                     | 10 year old, freshly calibrated                              | 500                    |
+| Pipette Tips                 | Universal 100-1000 µL tips                                 | Standard 82 mm length                                        | 50/1000 pieces         |
+| USB Cable                    | USB-A to USB-C, IKEA                                       | Make sure it supports serial com, some are only for charging | 10                     |
+| Hardware                     | M3X8, M3X6 screws and nuts                                 | ca. 20 each                                                  | ca. 10                 |
+| 3D printer to print parts    | BambuLab P1S                                               |                                                              | 400                    |
+| Filament to print parts      | Elegoo PLA+ rapid, 1 kg                                    | STL, and STEP files on MakerWord (free)                      | filament ca. 10        |
+| Total                        |                                                            | Whenever you already have 3D printer to print parts          | 830 (or 1230)          |
 
 ---
 
@@ -81,26 +94,7 @@ printer's XYZ motion system for positioning and the extruder stepper motor to dr
 
 ---
 
-## Hardware Requirements
-
-### Used Components
-
-| Component                    | Specification                                              | Notes                                                        | Price               |
-|------------------------------|------------------------------------------------------------|--------------------------------------------------------------|---------------------|
-| Kinetic 4 axis system        | Creality Ender 3 V3 SE 3D printer                          | Refubrished, second hand market                              | 100 USD             |
-| Controler                    | Raspberry Pi 5, 4 GB ram                                   | 40x40x5mm aluminium cooler                                   | 100 USD             |
-| USB Keyboard, Mouse, Display | Hosyond 7 Inch IPS LCD Touch Screen Display Panel 1024×600 | Resolution hardcooded in the python script                   | 50 USD              |
-| Analytical Pipette           | 100-1000 µL air displacement                               | 10 year old, freshly calibrated                              | 500 USD             |
-| Pipette Tips                 | Universal 100-1000 µL tips                                 | Standard 82 mm length                                        | 50 USD/1000 pieces  |
-| USB Cable                    | A to B or Micro-USB                                        | Make sure it supports serial com, some are only for charging | 10 USD              |
-| Hardware                     | M3X8, M3X6 screws and nuts                                 | ca. 20 each                                                  | ca. 10 USD          |
-| 3D printer to print parts    | Bambu P1S                                                  |                                                              | 600 USD             |
-| Filament to print parts      | Elegoo PLA+ rapid, 1 kg                                    | STL, and STEP files on MakerWord (free)                      | filament ca. 10 USD |
-
-
----
-
-## Software Requirements
+## Software
 
 ### Dependencies
 
