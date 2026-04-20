@@ -12,7 +12,7 @@ common laboratory workflows including liquid transfers, dilutions, pooling, and 
     </td>
     <td width="70%" valign="top" align="center">
       <img src="assets/pic_init.png" alt="Init Screen" width="100%" /><br/>
-      <img src="assets/pic_calibration.png" alt="Calibration Screen" width="100%" />
+      <img src="assets/pic_liq_transfer.png" alt="Calibration Screen" width="100%" />
     </td>
   </tr>
 </table>
@@ -40,13 +40,13 @@ common laboratory workflows including liquid transfers, dilutions, pooling, and 
 
 ### Supported Protocols
 
-| Protocol | Description |
-|----------|-------------|
-| **Liquid Transfer** | Move liquids between any modules (well-to-well, tube-to-plate, etc.) |
-| **Pooling** | Combine multiple samples into a single destination |
-| **Dilutions** | Create serial dilutions across 96-well plates |
-| **Aliquoting** | Distribute samples from a source to multiple destinations |
-| **Dilution + Aliquots** | Combined workflow for complex sample preparation |
+| Protocol                | Description                                                          |
+|-------------------------|----------------------------------------------------------------------|
+| **Liquid Transfer**     | Move liquids between any modules (well-to-well, tube-to-plate, etc.) |
+| **Pooling**             | Combine multiple samples into a single destination                   |
+| **Dilutions**           | Create serial dilutions across 96-well plates                        |
+| **Aliquoting**          | Distribute samples from a source to multiple destinations            |
+| **Dilution + Aliquots** | Combined workflow for complex sample preparation                     |
 
 ### Supported Labware Modules
 
