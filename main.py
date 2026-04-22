@@ -490,6 +490,10 @@ class LiquidHandlerApp:
         self.vial_b_var = tk.StringVar(value="A2")
         self.diluent_var = tk.StringVar(value="50mL")
 
+        # --- ISO TEST VARIABLES ---
+        self.iso_test_volume_var = tk.StringVar(value="800")
+        self.iso_test_vials_var = tk.StringVar(value="30")
+
         # --- CALIBRATION VARIABLES ---
         self.calibration_module_var = tk.StringVar(value="96 well plate")
         self.calibration_z_height_var = tk.StringVar(value="Z_CALIBRATE")
@@ -2887,17 +2891,37 @@ class LiquidHandlerApp:
         iso_frame.pack(fill="x", pady=5)
         ttk.Label(
             iso_frame,
-            text="One-click sequence: Wash A source, 3 phases (80/400/800 uL), 5x pre-wet per phase, "
-                 "10 destination vials per phase (30 total).",
+            text="Single-volume ISO distribution from Wash A with 5x pre-wet. Select one target volume "
+                 "and how many destination vials to fill (1-32).",
             font=("Arial", 8, "italic"),
             wraplength=900,
             justify="left"
         ).pack(fill="x", pady=(0, 5))
+
+        iso_config_row = ttk.Frame(iso_frame)
+        iso_config_row.pack(fill="x", pady=(0, 5))
+        ttk.Label(iso_config_row, text="Volume (uL):").pack(side="left", padx=(0, 3))
+        ttk.Combobox(
+            iso_config_row,
+            textvariable=self.iso_test_volume_var,
+            values=["80", "400", "800"],
+            width=6,
+            state="readonly"
+        ).pack(side="left", padx=(0, 12))
+        ttk.Label(iso_config_row, text="# Vials:").pack(side="left", padx=(0, 3))
+        ttk.Combobox(
+            iso_config_row,
+            textvariable=self.iso_test_vials_var,
+            values=[str(i) for i in range(1, 33)],
+            width=6,
+            state="readonly"
+        ).pack(side="left", padx=(0, 10))
+
         iso_row = ttk.Frame(iso_frame)
         iso_row.pack(fill="x", expand=True)
         ttk.Button(
             iso_row,
-            text="TEST: ISO Wash A 80/400/800 -> 30 Vials",
+            text="TEST: ISO Wash A Selected Volume",
             command=lambda: threading.Thread(target=self.test_iso_wash_sequence, daemon=True).start()
         ).pack(side="left", fill="x", expand=True, padx=(0, 5))
 
@@ -6376,18 +6400,27 @@ class LiquidHandlerApp:
             messagebox.showwarning("Not Connected", "Please connect to the printer first.")
             return
 
-        # Fixed destination order requested by user (30 vials total)
         destination_order = [f"4mL {p}" for p in self._4ml_positions]
         destination_order.extend([f"Filter Eppi {p}" for p in self.filter_eppi_positions])
         destination_order.extend([f"Eppi {p}" for p in self.eppi_positions])
-        destination_order.extend([f"Screwcap {p}" for p in self.screwcap_positions[:6]])
+        destination_order.extend([f"Screwcap {p}" for p in self.screwcap_positions])
 
-        if len(destination_order) != 30:
-            messagebox.showerror("ISO Test Config Error", "Expected exactly 30 destination vials.")
+        if len(destination_order) != 32:
+            messagebox.showerror("ISO Test Config Error", "Expected exactly 32 destination vials.")
             return
 
         source_str = "Wash A"
-        phase_volumes_ul = [80.0, 400.0, 800.0]
+        try:
+            target_volume_ul = float(self.iso_test_volume_var.get())
+            num_vials = int(self.iso_test_vials_var.get())
+        except Exception:
+            messagebox.showerror("ISO Test Input Error", "Invalid ISO volume or vial count selection.")
+            return
+
+        if num_vials < 1 or num_vials > len(destination_order):
+            messagebox.showerror("ISO Test Input Error", f"# Vials must be between 1 and {len(destination_order)}.")
+            return
+
         # ISO-test-only Boulder altitude compensation (linear fit from ISO gravimetric data).
         # Commanded aspiration volume is adjusted so delivered volume is close to target:
         #   command_ul = (target_ul + 6.11) / 0.9887
@@ -6397,18 +6430,22 @@ class LiquidHandlerApp:
         def iso_command_volume_ul(target_ul):
             return (target_ul + iso_cmd_offset_ul) / iso_cmd_slope
 
+        cmd_vol_ul = iso_command_volume_ul(target_volume_ul)
         prewet_cycles = 5
-        transfers_per_phase = 10
 
         air_gap_ul = float(AIR_GAP_UL)
         e_gap_pos = -1 * air_gap_ul * STEPS_PER_UL
         e_blowout_pos = -1 * 100.0 * STEPS_PER_UL
+        e_loaded_pos = -1 * (air_gap_ul + cmd_vol_ul) * STEPS_PER_UL
 
         wash_mod, wash_x, wash_y, wash_safe_z, _, wash_disp_z = self.get_coords_from_combo(source_str)
         wash_draw_z = wash_disp_z
 
         def run_seq():
-            self.log_command("[ISO TEST] Starting Wash A ISO validation distribution sequence...")
+            self.log_command(
+                f"[ISO TEST] Starting Wash A ISO validation distribution sequence "
+                f"for {target_volume_ul:.0f}uL across {num_vials} vials..."
+            )
             self.last_cmd_var.set("ISO Test: Starting...")
 
             current_sim_module = self.last_known_module
@@ -6417,116 +6454,106 @@ class LiquidHandlerApp:
             self.update_last_module("EJECT")
             current_sim_module = "EJECT"
 
+            tip_key = self._find_next_available_tip()
+            if not tip_key:
+                messagebox.showerror("No Tips", "Ran out of tips before ISO transfer sequence.")
+                self.last_cmd_var.set("Idle")
+                return
+
+            self.log_line(
+                f"[ISO TEST] Picking Tip {tip_key} for target {target_volume_ul:.0f}uL "
+                f"(commanded {cmd_vol_ul:.1f}uL)..."
+            )
+            self._send_lines_with_ok(self._get_pick_tip_commands(tip_key, start_module=current_sim_module))
+            self.tip_inventory[tip_key] = False
+            self.root.after(0, self.update_tip_grid_colors)
+            self.update_last_module("TIPS")
+            current_sim_module = "TIPS"
+
+            self.log_line(
+                f"[ISO TEST] Pre-wet {prewet_cycles}x for target {target_volume_ul:.0f}uL "
+                f"(commanded {cmd_vol_ul:.1f}uL) in {source_str}."
+            )
+            for cycle in range(prewet_cycles):
+                self.last_cmd_var.set(
+                    f"ISO Pre-wet {cycle + 1}/{prewet_cycles} "
+                    f"(target {target_volume_ul:.0f}uL, cmd {cmd_vol_ul:.1f}uL)"
+                )
+                cmds_prewet = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
+                cmds_prewet.extend(
+                    self._get_smart_travel_gcode(
+                        wash_mod, wash_x, wash_y, wash_safe_z,
+                        start_module=current_sim_module
+                    )
+                )
+                cmds_prewet.append(f"G0 Z{wash_draw_z:.2f} F{JOG_SPEED_Z}")
+                cmds_prewet.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
+                cmds_prewet.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
+                cmds_prewet.append(f"G0 Z{wash_safe_z:.2f} F{JOG_SPEED_Z}")
+
+                self._send_lines_with_ok(cmds_prewet)
+                self.update_last_module(wash_mod)
+                current_sim_module = wash_mod
+                self.current_pipette_volume = air_gap_ul
+                self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
+                self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
+
             destination_idx = 0
+            for transfer_idx in range(num_vials):
+                dest_str = destination_order[destination_idx]
+                destination_idx += 1
 
-            for phase_idx, vol_ul in enumerate(phase_volumes_ul, start=1):
-                cmd_vol_ul = iso_command_volume_ul(vol_ul)
-                tip_key = self._find_next_available_tip()
-                if not tip_key:
-                    messagebox.showerror("No Tips", f"Ran out of tips before ISO phase {phase_idx}.")
-                    self.last_cmd_var.set("Idle")
-                    return
+                self.last_cmd_var.set(
+                    f"ISO Transfer: {target_volume_ul:.0f}uL target (cmd {cmd_vol_ul:.1f}uL) "
+                    f"-> {dest_str} ({transfer_idx + 1}/{num_vials})"
+                )
+
+                # Aspirate from Wash A at wash aspirate Z
+                cmds_asp = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
+                cmds_asp.extend(
+                    self._get_smart_travel_gcode(
+                        wash_mod, wash_x, wash_y, wash_safe_z,
+                        start_module=current_sim_module
+                    )
+                )
+                cmds_asp.append(f"G0 Z{wash_draw_z:.2f} F{JOG_SPEED_Z}")
+                cmds_asp.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
+                cmds_asp.append(f"G0 Z{wash_safe_z:.2f} F{JOG_SPEED_Z}")
+                self._send_lines_with_ok(cmds_asp)
+                self.update_last_module(wash_mod)
+                current_sim_module = wash_mod
+
+                # Dispense at destination dispense Z from destination JSON config
+                dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
+                cmds_disp = []
+                cmds_disp.extend(
+                    self._get_smart_travel_gcode(
+                        dest_mod, dest_x, dest_y, dest_safe_z,
+                        start_module=current_sim_module
+                    )
+                )
+                cmds_disp.append(f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}")
+                cmds_disp.append(f"G1 E{e_blowout_pos:.3f} F{PIP_SPEED}")
+                cmds_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
+                cmds_disp.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
+                self._send_lines_with_ok(cmds_disp)
+                self.update_last_module(dest_mod)
+                current_sim_module = dest_mod
+
+                self.current_pipette_volume = air_gap_ul
+                self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
+                self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
 
                 self.log_line(
-                    f"[ISO TEST] Phase {phase_idx}: Picking Tip {tip_key} for target {vol_ul:.0f}uL "
-                    f"(commanded {cmd_vol_ul:.1f}uL)..."
+                    f"[ISO TEST] Dispensed target {target_volume_ul:.0f}uL "
+                    f"(commanded {cmd_vol_ul:.1f}uL) to {dest_str} "
+                    f"(vial {destination_idx}/{num_vials})."
                 )
-                self._send_lines_with_ok(self._get_pick_tip_commands(tip_key, start_module=current_sim_module))
-                self.tip_inventory[tip_key] = False
-                self.root.after(0, self.update_tip_grid_colors)
-                self.update_last_module("TIPS")
-                current_sim_module = "TIPS"
 
-                e_loaded_pos = -1 * (air_gap_ul + cmd_vol_ul) * STEPS_PER_UL
-
-                # Pre-wet tip in Wash A using current phase target volume
-                self.log_line(
-                    f"[ISO TEST] Phase {phase_idx}: Pre-wet {prewet_cycles}x for target {vol_ul:.0f}uL "
-                    f"(commanded {cmd_vol_ul:.1f}uL) in {source_str}."
-                )
-                for cycle in range(prewet_cycles):
-                    self.last_cmd_var.set(
-                        f"ISO Phase {phase_idx}: Pre-wet {cycle + 1}/{prewet_cycles} "
-                        f"(target {vol_ul:.0f}uL, cmd {cmd_vol_ul:.1f}uL)"
-                    )
-                    cmds_prewet = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
-                    cmds_prewet.extend(
-                        self._get_smart_travel_gcode(
-                            wash_mod, wash_x, wash_y, wash_safe_z,
-                            start_module=current_sim_module
-                        )
-                    )
-                    cmds_prewet.append(f"G0 Z{wash_draw_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_prewet.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
-                    cmds_prewet.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
-                    cmds_prewet.append(f"G0 Z{wash_safe_z:.2f} F{JOG_SPEED_Z}")
-
-                    self._send_lines_with_ok(cmds_prewet)
-                    self.update_last_module(wash_mod)
-                    current_sim_module = wash_mod
-                    self.current_pipette_volume = air_gap_ul
-                    self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
-                    self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
-
-                # 10 transfers for this phase, always to next vial in requested global order
-                for transfer_idx in range(transfers_per_phase):
-                    if destination_idx >= len(destination_order):
-                        break
-
-                    dest_str = destination_order[destination_idx]
-                    destination_idx += 1
-
-                    self.last_cmd_var.set(
-                        f"ISO Phase {phase_idx}: {vol_ul:.0f}uL target (cmd {cmd_vol_ul:.1f}uL) "
-                        f"-> {dest_str} ({transfer_idx + 1}/10)"
-                    )
-
-                    # Aspirate from Wash A at wash aspirate Z
-                    cmds_asp = [f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}"]
-                    cmds_asp.extend(
-                        self._get_smart_travel_gcode(
-                            wash_mod, wash_x, wash_y, wash_safe_z,
-                            start_module=current_sim_module
-                        )
-                    )
-                    cmds_asp.append(f"G0 Z{wash_draw_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_asp.append(f"G1 E{e_loaded_pos:.3f} F{PIP_SPEED}")
-                    cmds_asp.append(f"G0 Z{wash_safe_z:.2f} F{JOG_SPEED_Z}")
-                    self._send_lines_with_ok(cmds_asp)
-                    self.update_last_module(wash_mod)
-                    current_sim_module = wash_mod
-
-                    # Dispense at destination dispense Z from destination JSON config
-                    dest_mod, dest_x, dest_y, dest_safe_z, _, dest_disp_z = self.get_coords_from_combo(dest_str)
-                    cmds_disp = []
-                    cmds_disp.extend(
-                        self._get_smart_travel_gcode(
-                            dest_mod, dest_x, dest_y, dest_safe_z,
-                            start_module=current_sim_module
-                        )
-                    )
-                    cmds_disp.append(f"G0 Z{dest_disp_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_disp.append(f"G1 E{e_blowout_pos:.3f} F{PIP_SPEED}")
-                    cmds_disp.append(f"G0 Z{dest_safe_z:.2f} F{JOG_SPEED_Z}")
-                    cmds_disp.append(f"G1 E{e_gap_pos:.3f} F{PIP_SPEED}")
-                    self._send_lines_with_ok(cmds_disp)
-                    self.update_last_module(dest_mod)
-                    current_sim_module = dest_mod
-
-                    self.current_pipette_volume = air_gap_ul
-                    self.vol_display_var.set(f"{self.current_pipette_volume:.1f} uL")
-                    self.live_vol_var.set(f"{self.current_pipette_volume:.1f}")
-
-                    self.log_line(
-                        f"[ISO TEST] Phase {phase_idx}: Dispensed target {vol_ul:.0f}uL "
-                        f"(commanded {cmd_vol_ul:.1f}uL) to {dest_str} "
-                        f"(global vial {destination_idx}/30)."
-                    )
-
-                self.log_line(f"[ISO TEST] Phase {phase_idx}: Ejecting tip...")
-                self._send_lines_with_ok(self._get_eject_tip_commands())
-                self.update_last_module("EJECT")
-                current_sim_module = "EJECT"
+            self.log_line("[ISO TEST] Ejecting tip...")
+            self._send_lines_with_ok(self._get_eject_tip_commands())
+            self.update_last_module("EJECT")
+            current_sim_module = "EJECT"
 
             self.log_line(f"[ISO TEST] Completed {destination_idx} destination transfers.")
             self.log_command("[ISO TEST] Sequence complete. Parking.")
