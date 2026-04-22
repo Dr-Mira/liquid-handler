@@ -19,6 +19,19 @@ common laboratory workflows including liquid transfers, dilutions, pooling, and 
 
 ---
 
+## ISO 8655 Compliance
+The machine was tested acording to the [ISO 8655](https://www.iso.org/obp/ui/en/#iso:std:iso:8655:-1:ed-2:v1:en). 
+For the full report see liquid_handler_iso.pdf.
+
+| Target Volume | Accuracy | ISO Limit | Precision (CV) | ISO Limit | Status |
+|---------------|----------|-----------|----------------|-----------|--------|
+| 800 µL (100%) | +0.56%   | ≤ ±0.8%   | 0.18%          | ≤ 0.3%    | PASS   |
+| 400 µL (50%)  | +0.25%   | ≤ ±1.6%   | 0.35%          | ≤ 0.6%    | PASS   |
+| 80 µL (10%)   | -0.10%   | ≤ ±8.0%   | 1.74%          | ≤ 3.0%    | PASS   |
+
+---
+
+
 ## Components I Used
 
 | Component                    | Specification                                              | Notes                                                        | Price (USD early 2026) |
@@ -31,7 +44,7 @@ common laboratory workflows including liquid transfers, dilutions, pooling, and 
 | USB Cable                    | USB-A to USB-C, IKEA                                       | Make sure it supports serial com, some are only for charging | 10                     |
 | Hardware                     | M3X8, M3X6 screws and nuts                                 | ca. 20 each                                                  | ca. 10                 |
 | 3D printer to print parts    | BambuLab P1S                                               |                                                              | 400                    |
-| Filament to print parts      | Elegoo PLA+ rapid, 1 kg                                    | STL, and STEP files on MakerWord (free)                      | filament ca. 10        |
+| Filament to print parts      | Elegoo PLA+ rapid, 1 kg, Bambu ABS-GF 0.1 kg               | STL, and STEP files on MakerWord (free)                      | filament ca. 20        |
 | Total                        |                                                            | Whenever you already have 3D printer to print parts          | 830 (or 1230)          |
 
 ---
