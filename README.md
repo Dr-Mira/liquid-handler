@@ -20,7 +20,7 @@ common laboratory workflows including liquid transfers, dilutions, pooling, and 
 ---
 
 ## ISO 8655 Compliance
-The machine was tested acording to the [ISO 8655](https://www.iso.org/obp/ui/en/#iso:std:iso:8655:-1:ed-2:v1:en). 
+The machine was tested according to the [ISO 8655](https://www.iso.org/obp/ui/en/#iso:std:iso:8655:-1:ed-2:v1:en). 
 For the full report see liquid_handler_iso.pdf.
 
 | Target Volume | Accuracy | ISO Limit | Precision (CV) | ISO Limit | Status |
