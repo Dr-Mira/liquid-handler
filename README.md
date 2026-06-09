@@ -17,6 +17,9 @@ common laboratory workflows including liquid transfers, dilutions, pooling, and 
   </tr>
 </table>
 
+more videos/demos [here](https://dr-mira.github.io/portfolio-page/)
+
+
 ---
 
 ## ISO 8655 Compliance
